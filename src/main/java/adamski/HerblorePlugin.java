@@ -6,12 +6,7 @@ import com.google.inject.Provides;
 import javax.inject.Inject;
 
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.ChatMessageType;
-import net.runelite.api.Client;
-import net.runelite.api.GameState;
-import net.runelite.api.events.GameStateChanged;
 import net.runelite.client.config.ConfigManager;
-import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
@@ -21,15 +16,9 @@ import java.awt.image.BufferedImage;
 
 @Slf4j
 @PluginDescriptor(
-        name = "Example"
+        name = "Herblore Helper"
 )
 public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
-    @Inject
-    private Client client;
-
-    @Inject
-    private HerbloreConfig config;
-
     @Inject
     private ClientToolbar clientToolbar;
 
@@ -55,13 +44,6 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
     @Override
     protected void shutDown() throws Exception {
         clientToolbar.removeNavigation(navButton);
-    }
-
-    @Subscribe
-    public void onGameStateChanged(GameStateChanged gameStateChanged) {
-        if (gameStateChanged.getGameState() == GameState.LOGGED_IN) {
-            client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "Example says " + config.greeting(), null);
-        }
     }
 
     @Provides
