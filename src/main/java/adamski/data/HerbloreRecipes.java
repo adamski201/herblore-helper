@@ -7,6 +7,9 @@ import net.runelite.api.gameval.ItemID;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Static Herblore recipe data, imported from osrs_herblore_recipes.xlsx.
@@ -293,10 +296,39 @@ public final class HerbloreRecipes {
             new Recipe(132, new Ingredient(ItemID.TORSTOL_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_TORSTOL, NOMINAL_HERB_YIELD), "farming", 0f, 0)
     );
 
+    /**
+     * Every item id any recipe mentions - primaries, secondaries and outputs.
+     * <p>
+     * Declared after RECIPES on purpose: static initialisers run in textual order,
+     * so moving this above the table would initialise it against a null list.
+     * <p>
+     * These are 1-dose ids, like the table itself. Callers must un-dose before
+     * testing, or every dosed potion looks irrelevant.
+     */
+    private static final Set<Integer> RELEVANT_ITEM_IDS = RECIPES.stream()
+            .flatMap(HerbloreRecipes::itemIdsOf)
+            .collect(Collectors.toSet());
+
     private HerbloreRecipes() {
     }
 
     public static List<Recipe> all() {
         return Collections.unmodifiableList(RECIPES);
+    }
+
+    /**
+     * Whether an item appears anywhere in the recipe table. This is the static
+     * superset - it is deliberately independent of which recipes the user has
+     * configured, so selecting a new recipe never finds its items already
+     * discarded.
+     */
+    public static boolean isRelevantItem(int itemId) {
+        return RELEVANT_ITEM_IDS.contains(itemId);
+    }
+
+    private static Stream<Integer> itemIdsOf(Recipe recipe) {
+        return Stream.concat(
+                Stream.of(recipe.getPrimary().getItemId(), recipe.getOutput().getItemId()),
+                recipe.getSecondaries().stream().map(Ingredient::getItemId));
     }
 }

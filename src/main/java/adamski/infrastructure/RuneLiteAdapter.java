@@ -1,7 +1,9 @@
 package adamski.infrastructure;
 
 import adamski.app.HerbloreApp;
-import adamski.domain.models.Container;
+import adamski.data.HerbloreRecipes;
+import adamski.data.PotionDoses;
+import adamski.domain.models.ItemSource;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.events.ClientTick;
@@ -40,7 +42,7 @@ public class RuneLiteAdapter {
     private final PotionStorageAdapter potionStorage;
     private final HerbloreApp app;
 
-    private final Map<Container, Map<Integer, Integer>> pending = new EnumMap<>(Container.class);
+    private final Map<ItemSource, Map<Integer, Integer>> pending = new EnumMap<>(ItemSource.class);
 
     @Inject
     public RuneLiteAdapter(ItemManager itemManager, PotionStorageAdapter potionStorage, HerbloreApp app) {
@@ -55,7 +57,7 @@ public class RuneLiteAdapter {
             return;
         }
 
-        pending.put(Container.Bank, getItemQuantitiesFromContainer(event.getItemContainer()));
+        pending.put(ItemSource.Bank, getItemQuantitiesFromContainer(event.getItemContainer()));
     }
 
     @Subscribe
@@ -72,7 +74,7 @@ public class RuneLiteAdapter {
     public void onClientTick(ClientTick event) {
         // Sources settle first, then publish once. The order here is the point.
         if (potionStorage.drain()) {
-            pending.put(Container.PotionStorage, potionStorage.contents());
+            pending.put(ItemSource.PotionStorage, potionStorage.contents());
         }
 
         flush();
@@ -106,7 +108,11 @@ public class RuneLiteAdapter {
             // Merge noted items into unnoted form
             final var unnotedId = itemManager.canonicalize(id);
 
-            items.merge(unnotedId, item.getQuantity(), Integer::sum);
+            // Reduce dose variants to 1-dose units
+            final var canonicalId = PotionDoses.canonicalId(unnotedId);
+            if (!HerbloreRecipes.isRelevantItem(canonicalId)) continue;
+
+            items.merge(canonicalId, item.getQuantity() * PotionDoses.doses(unnotedId), Integer::sum);
         }
 
         return items;

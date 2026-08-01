@@ -1,10 +1,9 @@
 package adamski.app;
 
-import adamski.domain.models.Container;
+import adamski.domain.models.ItemSource;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.inject.Singleton;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -31,15 +30,12 @@ public class HerbloreApp {
      * stay tagged - they are never merged, because calculators draw on different
      * subsets of them.
      */
-    public void sourcesUpdated(Map<Container, Map<Integer, Integer>> changed) {
+    public void sourcesUpdated(Map<ItemSource, Map<Integer, Integer>> changed) {
         log.debug("sources updated: {}", changed.keySet());
 
-        // TODO: push each source into the store, then recalculate if anything
-        // really changed. Publishing the bank alone keeps the debug panel working.
-        final Map<Integer, Integer> bank = changed.get(Container.Bank);
-        if (bank != null) {
-            publish(Collections.unmodifiableMap(bank));
-        }
+        // TODO: push each source into the store, and if it reports a real change,
+        // run the calculators and publish a snapshot. Nothing reaches the panel
+        // until that lands.
     }
 
     private void publish(Map<Integer, Integer> itemQuantities) {

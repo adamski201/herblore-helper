@@ -1,6 +1,6 @@
 package adamski.domain.models;
 
-public enum Container {
+public enum ItemSource {
     PotionStorage,
     Inventory,
     Bank,

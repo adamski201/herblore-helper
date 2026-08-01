@@ -22,9 +22,7 @@ import java.util.Collections;
 import java.util.List;
 
 @Slf4j
-@PluginDescriptor(
-        name = "Herblore Helper"
-)
+@PluginDescriptor(name = "Herblore Helper")
 public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
     @Inject
     private ClientToolbar clientToolbar;
@@ -33,8 +31,6 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
     private EventBus eventBus;
     @Inject
     private RuneLiteAdapter adapter;
-    @Inject
-    private PotionStorageAdapter potionStorageAdapter;
     @Inject
     private HerbloreApp service;
 
@@ -53,12 +49,7 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
 
         final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "icon.png");
 
-        navButton = NavigationButton.builder()
-                .tooltip("Herblore Helper")
-                .icon(icon)
-                .priority(100)
-                .panel(panel)
-                .build();
+        navButton = NavigationButton.builder().tooltip("Herblore Helper").icon(icon).priority(100).panel(panel).build();
 
         clientToolbar.addNavigation(navButton);
         service.addListener(panel);

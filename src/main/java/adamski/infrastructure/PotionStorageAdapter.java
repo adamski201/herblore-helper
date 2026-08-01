@@ -1,5 +1,6 @@
 package adamski.infrastructure;
 
+import adamski.data.HerbloreRecipes;
 import adamski.data.PotionDoses;
 import net.runelite.api.Client;
 import net.runelite.api.EnumComposition;
@@ -140,11 +141,14 @@ public class PotionStorageAdapter {
                     continue;
                 }
 
-                // The store counts doses, so this quantity is ALREADY in 1-dose
-                // units and must not be multiplied by PotionDoses.doses().
-                // canonicalId is still needed, because the enum reports some dose
-                // variant's item id rather than the 1-dose one.
-                doses.merge(PotionDoses.canonicalId(potion.getIntValue(1)), stored, Integer::sum);
+                // Quantities are already 1 dose, but ItemId may need to be normalised
+                final int canonicalId = PotionDoses.canonicalId(potion.getIntValue(1));
+
+                if (!HerbloreRecipes.isRelevantItem(canonicalId)) {
+                    continue;
+                }
+
+                doses.merge(canonicalId, stored, Integer::sum);
             }
         }
 
