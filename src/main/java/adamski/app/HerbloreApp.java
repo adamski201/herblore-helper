@@ -3,6 +3,7 @@ package adamski.app;
 import adamski.domain.models.ItemSource;
 import lombok.extern.slf4j.Slf4j;
 
+import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +17,13 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class HerbloreApp {
     private final List<HerbloreListener> listeners = new CopyOnWriteArrayList<>();
 
+    private final HerbloreStore store;
+
+    @Inject
+    public HerbloreApp(HerbloreStore store) {
+        this.store = store;
+    }
+
     public void addListener(HerbloreListener listener) {
         listeners.add(listener);
     }
@@ -25,12 +33,21 @@ public class HerbloreApp {
     }
 
     public void sourcesUpdated(Map<ItemSource, Map<Integer, Integer>> changed) {
-        log.debug("sources updated: {}", changed.keySet());
+        final var delta = store.updateState(changed);
+        if (delta.isEmpty()) return;
+
+        log.debug("sources changed: {}", delta.keySet());
+        publish(store.getState(), delta);
     }
 
-    private void publish(Map<Integer, Integer> itemQuantities) {
+    private void publish(Map<ItemSource, Map<Integer, Integer>> snapshot,
+                         Map<ItemSource, Map<Integer, Integer>> delta) {
         for (HerbloreListener listener : listeners) {
-            listener.onStateChanged(itemQuantities);
+            try {
+                listener.onStateChanged(snapshot, delta);
+            } catch (Exception e) {
+                log.warn("listener {} threw", listener.getClass().getSimpleName(), e);
+            }
         }
     }
 }
