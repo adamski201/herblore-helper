@@ -12,6 +12,7 @@ import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.gameval.InventoryID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
 
@@ -33,6 +34,11 @@ public class RuneLiteAdapter {
 
     private final Map<ItemSource, Map<Integer, Integer>> pending = new EnumMap<>(ItemSource.class);
 
+    private final Map<Integer, ItemSource> inventoryItemSources = Map.of(
+            InventoryID.BANK, ItemSource.Bank,
+            InventoryID.SEED_VAULT, ItemSource.SeedVault
+    );
+
     @Inject
     public RuneLiteAdapter(ItemManager itemManager, PotionStorageAdapter potionStorage, HerbloreApp app) {
         this.itemManager = itemManager;
@@ -42,12 +48,10 @@ public class RuneLiteAdapter {
 
     @Subscribe
     public void onItemContainerChanged(ItemContainerChanged event) {
-        final var containerId = event.getContainerId();
-        if (containerId != InventoryID.BANK && containerId != InventoryID.SEED_VAULT) {
-            return;
-        }
+        final var itemSource = inventoryItemSources.get(event.getContainerId());
+        if (itemSource == null) return;
 
-        pending.put(ItemSource.Bank, getItemQuantitiesFromContainer(event.getItemContainer()));
+        pending.put(itemSource, getItemQuantitiesFromContainer(event.getItemContainer()));
     }
 
     @Subscribe
