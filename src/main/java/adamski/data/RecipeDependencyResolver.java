@@ -38,8 +38,7 @@ public final class RecipeDependencyResolver {
 
             PRODUCERS.computeIfAbsent(output, k -> new ArrayList<>()).add(recipe);
 
-            // Deduplicated - several recipes share a primary/output pair, and counting an edge
-            // twice would leave the output stranded with an in-degree that never reaches zero.
+            // Deduplicate recipes that share primary/output pair
             if (successors.computeIfAbsent(primary, k -> new HashSet<>()).add(output)) {
                 inDegree.merge(output, 1, Integer::sum);
             }
@@ -86,10 +85,8 @@ public final class RecipeDependencyResolver {
         }
 
         if (sorted.size() != nodes.size()) {
-            // A cycle means the recipe table is malformed. Failing here surfaces as
-            // ExceptionInInitializerError at plugin load, which a unit test guards against.
             final Set<Integer> cyclic = new LinkedHashSet<>(nodes);
-            cyclic.removeAll(sorted);
+            sorted.forEach(cyclic::remove);
             throw new IllegalStateException("recipe table has a dependency cycle among items: " + cyclic);
         }
 
