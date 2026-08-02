@@ -11,34 +11,11 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-/**
- * Static Herblore recipe data, imported from osrs_herblore_recipes.xlsx.
- * <p>
- * Every ItemID here was verified against the running client's own item names
- * rather than inferred from the constant name - several constants are
- * misleading (CRUSHED_DRAGON_BONES is "Crushed superior dragon bones",
- * SANFEW_SALVE_* is "Sanfew serum", SUPERCOMPOST_POTION_* is "Compost potion",
- * MORT_SERUM* is "Serum 207").
- * <p>
- * <b>Decantable potions are expressed in 1-dose units.</b> A recipe that makes a
- * 3-dose attack potion is written as 3 x Attack potion(1), and one that consumes
- * a 4-dose super attack is written as 4 x Super attack(1). {@link PotionDoses}
- * converts what is actually in the bank into the same units. Items with no dose
- * variants (weapon poisons, haemostatic poultice, herbs, secondaries) are
- * quantity 1.
- * <p>
- * <b>xp is per craft, not per output unit.</b> Derive the number of crafts from
- * the inputs and multiply by xp - never multiply xp by the output quantity.
- * <p>
- * Levels are all 0 - the source sheet has no level column.
- */
 public final class HerbloreRecipes {
     private static final Ingredient[] NONE = new Ingredient[0];
 
     /**
-     * Placeholder herbs-per-seed for the "farming" rows. Real yield depends on
-     * farming level, compost, diaries and secateurs, so it is expected to be
-     * overridden per-user at calculation time rather than corrected here.
+     * Placeholder herbs-per-seed - expected to be user-overridden
      */
     private static final int NOMINAL_HERB_YIELD = 8;
 
@@ -60,7 +37,7 @@ public final class HerbloreRecipes {
             new Recipe(14, new Ingredient(ItemID.UNIDENTIFIED_DWARF_WEED, 1), NONE, new Ingredient(ItemID.DWARF_WEED, 1), "degrime", 13.8f, 0),
             new Recipe(15, new Ingredient(ItemID.UNIDENTIFIED_TORSTOL, 1), NONE, new Ingredient(ItemID.TORSTOL, 1), "degrime", 15f, 0),
 
-            // --- unfinished potions (no xp on creation) ------------------
+            // --- unfinished potions --------------------
             new Recipe(16, new Ingredient(ItemID.GUAM_LEAF, 1), new Ingredient[]{new Ingredient(ItemID.VIAL_WATER, 1)},
                     new Ingredient(ItemID.GUAMVIAL, 1), "unf", 0f, 0),
             new Recipe(17, new Ingredient(ItemID.MARENTILL, 1), new Ingredient[]{new Ingredient(ItemID.VIAL_WATER, 1)},
@@ -139,7 +116,7 @@ public final class HerbloreRecipes {
                     new Ingredient(ItemID._1DOSEHUNTING, 3), "potion", 120f, 0),
             new Recipe(53, new Ingredient(ItemID.KWUARMVIAL, 1), new Ingredient[]{new Ingredient(ItemID.LIMPWURT_ROOT, 1)},
                     new Ingredient(ItemID._1DOSE2STRENGTH, 3), "potion", 125f, 0),
-            // Weapon poisons have no dose variants, so the sheet's ":3" does not apply.
+            // Weapon poisons have no dose variants
             new Recipe(54, new Ingredient(ItemID.KWUARMVIAL, 1), new Ingredient[]{new Ingredient(ItemID.DRAGON_SCALE_DUST, 1)},
                     new Ingredient(ItemID.WEAPON_POISON, 1), "potion", 137.5f, 0),
             new Recipe(55, new Ingredient(ItemID.SNAPDRAGONVIAL, 1), new Ingredient[]{new Ingredient(ItemID.RED_SPIDERS_EGGS, 1)},
@@ -276,9 +253,6 @@ public final class HerbloreRecipes {
                     new Ingredient(ItemID.BRUTAL_1DOSE4ANTIDRAGON, 2), "caviar", 78f, 0),
 
             // --- seeds -> grimy herbs ------------------------------------
-            // Farming, not Herblore: 0 Herblore xp. These exist only so seeds can
-            // cascade into the herb chain. Output quantity is a nominal yield and
-            // is expected to be overridden per-user at calculation time.
             new Recipe(118, new Ingredient(ItemID.GUAM_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_GUAM, NOMINAL_HERB_YIELD), "farming", 0f, 0),
             new Recipe(119, new Ingredient(ItemID.MARRENTILL_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_MARENTILL, NOMINAL_HERB_YIELD), "farming", 0f, 0),
             new Recipe(120, new Ingredient(ItemID.TARROMIN_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_TARROMIN, NOMINAL_HERB_YIELD), "farming", 0f, 0),
@@ -297,16 +271,10 @@ public final class HerbloreRecipes {
     );
 
     /**
-     * Every item id any recipe mentions - primaries, secondaries and outputs.
-     * <p>
-     * Declared after RECIPES on purpose: static initialisers run in textual order,
-     * so moving this above the table would initialise it against a null list.
-     * <p>
-     * These are 1-dose ids, like the table itself. Callers must un-dose before
-     * testing, or every dosed potion looks irrelevant.
+     * Every item id any recipe mentions - primaries, secondaries, outputs
      */
     private static final Set<Integer> RELEVANT_ITEM_IDS = RECIPES.stream()
-            .flatMap(HerbloreRecipes::itemIdsOf)
+            .flatMap(HerbloreRecipes::getItemIdsForRecipe)
             .collect(Collectors.toSet());
 
     private HerbloreRecipes() {
@@ -316,17 +284,11 @@ public final class HerbloreRecipes {
         return Collections.unmodifiableList(RECIPES);
     }
 
-    /**
-     * Whether an item appears anywhere in the recipe table. This is the static
-     * superset - it is deliberately independent of which recipes the user has
-     * configured, so selecting a new recipe never finds its items already
-     * discarded.
-     */
     public static boolean isRelevantItem(int itemId) {
         return RELEVANT_ITEM_IDS.contains(itemId);
     }
 
-    private static Stream<Integer> itemIdsOf(Recipe recipe) {
+    private static Stream<Integer> getItemIdsForRecipe(Recipe recipe) {
         return Stream.concat(
                 Stream.of(recipe.getPrimary().getItemId(), recipe.getOutput().getItemId()),
                 recipe.getSecondaries().stream().map(Ingredient::getItemId));

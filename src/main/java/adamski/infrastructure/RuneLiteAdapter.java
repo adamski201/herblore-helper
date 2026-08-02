@@ -4,6 +4,7 @@ import adamski.app.HerbloreApp;
 import adamski.data.HerbloreRecipes;
 import adamski.data.PotionDoses;
 import adamski.domain.models.ItemSource;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.events.ClientTick;
@@ -23,18 +24,6 @@ import java.util.Map;
 
 /**
  * Adapts RuneLite events into domain language.
- * <p>
- * The single EventBus subscriber. Sources accumulate in {@link #pending} as
- * events arrive and are flushed together once per client tick, so HerbloreApp
- * never observes half-applied state - a bank deposit changes two containers and
- * fires two events, and both settle before anything downstream sees either.
- * <p>
- * Sources with no event of their own are driven from here rather than
- * subscribing themselves. That is deliberate: the flush has to happen after
- * every source has settled, and expressing that as program order in
- * {@link #onClientTick} is clearer than spreading @Subscribe priorities across
- * classes. Raw ids are forwarded without interpretation - each source still
- * decides what is relevant to it.
  */
 @Singleton
 public class RuneLiteAdapter {
@@ -53,7 +42,8 @@ public class RuneLiteAdapter {
 
     @Subscribe
     public void onItemContainerChanged(ItemContainerChanged event) {
-        if (event.getContainerId() != InventoryID.BANK) {
+        final var containerId = event.getContainerId();
+        if (containerId != InventoryID.BANK && containerId != InventoryID.SEED_VAULT) {
             return;
         }
 
@@ -72,27 +62,22 @@ public class RuneLiteAdapter {
 
     @Subscribe
     public void onClientTick(ClientTick event) {
-        // Sources settle first, then publish once. The order here is the point.
-        if (potionStorage.drain()) {
-            pending.put(ItemSource.PotionStorage, potionStorage.contents());
+        // Sources are gathered into an array and dispatched together so that simultaneous actions (e.g. deposit
+        // inv to bank) dispatch one action rather than multiple.
+
+        final var potionDoses = potionStorage.poll();
+        if (potionDoses != null) {
+            pending.put(ItemSource.PotionStorage, potionDoses);
         }
 
-        flush();
-    }
-
-    private void flush() {
-        if (pending.isEmpty()) {
-            return;
-        }
+        if (pending.isEmpty()) return;
 
         app.sourcesUpdated(new EnumMap<>(pending));
         pending.clear();
     }
 
     private Map<Integer, Integer> getItemQuantitiesFromContainer(ItemContainer container) {
-        if (container == null) {
-            return Collections.emptyMap();
-        }
+        if (container == null) return Collections.emptyMap();
 
         final Map<Integer, Integer> items = new HashMap<>();
 
@@ -105,14 +90,12 @@ public class RuneLiteAdapter {
             final var comp = itemManager.getItemComposition(id);
             if (comp.getPlaceholderTemplateId() != -1) continue;
 
-            // Merge noted items into unnoted form
-            final var unnotedId = itemManager.canonicalize(id);
+            final var unnotedId = itemManager.canonicalize(id); // Merge noted items into unnoted form
+            final var doses = item.getQuantity() * PotionDoses.doses(unnotedId); // Calculate doses
+            final var canonicalId = PotionDoses.canonicalId(unnotedId); // Reduce dose variants to 1-dose units
+            if (!HerbloreRecipes.isRelevantItem(canonicalId)) continue; // Filter for domain-relevant items
 
-            // Reduce dose variants to 1-dose units
-            final var canonicalId = PotionDoses.canonicalId(unnotedId);
-            if (!HerbloreRecipes.isRelevantItem(canonicalId)) continue;
-
-            items.merge(canonicalId, item.getQuantity() * PotionDoses.doses(unnotedId), Integer::sum);
+            items.merge(canonicalId, doses, Integer::sum);
         }
 
         return items;

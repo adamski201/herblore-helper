@@ -9,8 +9,7 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Orchestrator. Receives changes from the adapter, updates state, and publishes
- * to listeners when something actually changed.
+ * Orchestrator - receives changes from Adapter, updates state via store, and publishes data to listeners
  */
 @Slf4j
 @Singleton
@@ -25,17 +24,8 @@ public class HerbloreApp {
         listeners.remove(listener);
     }
 
-    /**
-     * A consolidated update covering every source that changed this tick. Sources
-     * stay tagged - they are never merged, because calculators draw on different
-     * subsets of them.
-     */
     public void sourcesUpdated(Map<ItemSource, Map<Integer, Integer>> changed) {
         log.debug("sources updated: {}", changed.keySet());
-
-        // TODO: push each source into the store, and if it reports a real change,
-        // run the calculators and publish a snapshot. Nothing reaches the panel
-        // until that lands.
     }
 
     private void publish(Map<Integer, Integer> itemQuantities) {
