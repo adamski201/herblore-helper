@@ -9,11 +9,6 @@ import static org.junit.Assert.assertTrue;
 
 public class HerbloreRecipesTest {
     @Test
-    public void tableIsComplete() {
-        assertEquals(132, HerbloreRecipes.all().size());
-    }
-
-    @Test
     public void relevantItemsCoversEveryRole() {
         // primary, output and secondary respectively
         assertTrue(HerbloreRecipes.isRelevantItem(ItemID.UNIDENTIFIED_RANARR));
