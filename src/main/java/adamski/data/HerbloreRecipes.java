@@ -14,10 +14,9 @@ import java.util.stream.Stream;
 public final class HerbloreRecipes {
     private static final Ingredient[] NONE = new Ingredient[0];
 
-    /**
-     * Placeholder herbs-per-seed - expected to be user-overridden
-     */
+    // Placeholder values - overridden by user config
     private static final int NOMINAL_HERB_YIELD = 8;
+    private static final int NOMINAL_CORAL_YIELD = 40;
 
     private static final List<Recipe> RECIPES = Arrays.asList(
             // --- degrime -------------------------------------------------
@@ -253,21 +252,26 @@ public final class HerbloreRecipes {
                     new Ingredient(ItemID.BRUTAL_1DOSE4ANTIDRAGON, 2), "caviar", 78f, 0),
 
             // --- seeds -> grimy herbs ------------------------------------
-            new Recipe(118, new Ingredient(ItemID.GUAM_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_GUAM, NOMINAL_HERB_YIELD), "farming", 0f, 0),
-            new Recipe(119, new Ingredient(ItemID.MARRENTILL_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_MARENTILL, NOMINAL_HERB_YIELD), "farming", 0f, 0),
-            new Recipe(120, new Ingredient(ItemID.TARROMIN_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_TARROMIN, NOMINAL_HERB_YIELD), "farming", 0f, 0),
-            new Recipe(121, new Ingredient(ItemID.HARRALANDER_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_HARRALANDER, NOMINAL_HERB_YIELD), "farming", 0f, 0),
-            new Recipe(122, new Ingredient(ItemID.RANARR_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_RANARR, NOMINAL_HERB_YIELD), "farming", 0f, 0),
-            new Recipe(123, new Ingredient(ItemID.TOADFLAX_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_TOADFLAX, NOMINAL_HERB_YIELD), "farming", 0f, 0),
-            new Recipe(124, new Ingredient(ItemID.IRIT_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_IRIT, NOMINAL_HERB_YIELD), "farming", 0f, 0),
-            new Recipe(125, new Ingredient(ItemID.AVANTOE_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_AVANTOE, NOMINAL_HERB_YIELD), "farming", 0f, 0),
-            new Recipe(126, new Ingredient(ItemID.KWUARM_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_KWUARM, NOMINAL_HERB_YIELD), "farming", 0f, 0),
-            new Recipe(127, new Ingredient(ItemID.HUASCA_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_HUASCA, NOMINAL_HERB_YIELD), "farming", 0f, 0),
-            new Recipe(128, new Ingredient(ItemID.SNAPDRAGON_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_SNAPDRAGON, NOMINAL_HERB_YIELD), "farming", 0f, 0),
-            new Recipe(129, new Ingredient(ItemID.CADANTINE_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_CADANTINE, NOMINAL_HERB_YIELD), "farming", 0f, 0),
-            new Recipe(130, new Ingredient(ItemID.LANTADYME_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_LANTADYME, NOMINAL_HERB_YIELD), "farming", 0f, 0),
-            new Recipe(131, new Ingredient(ItemID.DWARF_WEED_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_DWARF_WEED, NOMINAL_HERB_YIELD), "farming", 0f, 0),
-            new Recipe(132, new Ingredient(ItemID.TORSTOL_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_TORSTOL, NOMINAL_HERB_YIELD), "farming", 0f, 0)
+            new Recipe(118, new Ingredient(ItemID.GUAM_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_GUAM, NOMINAL_HERB_YIELD), "seed", 0f, 0),
+            new Recipe(119, new Ingredient(ItemID.MARRENTILL_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_MARENTILL, NOMINAL_HERB_YIELD), "seed", 0f, 0),
+            new Recipe(120, new Ingredient(ItemID.TARROMIN_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_TARROMIN, NOMINAL_HERB_YIELD), "seed", 0f, 0),
+            new Recipe(121, new Ingredient(ItemID.HARRALANDER_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_HARRALANDER, NOMINAL_HERB_YIELD), "seed", 0f, 0),
+            new Recipe(122, new Ingredient(ItemID.RANARR_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_RANARR, NOMINAL_HERB_YIELD), "seed", 0f, 0),
+            new Recipe(123, new Ingredient(ItemID.TOADFLAX_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_TOADFLAX, NOMINAL_HERB_YIELD), "seed", 0f, 0),
+            new Recipe(124, new Ingredient(ItemID.IRIT_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_IRIT, NOMINAL_HERB_YIELD), "seed", 0f, 0),
+            new Recipe(125, new Ingredient(ItemID.AVANTOE_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_AVANTOE, NOMINAL_HERB_YIELD), "seed", 0f, 0),
+            new Recipe(126, new Ingredient(ItemID.KWUARM_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_KWUARM, NOMINAL_HERB_YIELD), "seed", 0f, 0),
+            new Recipe(127, new Ingredient(ItemID.HUASCA_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_HUASCA, NOMINAL_HERB_YIELD), "seed", 0f, 0),
+            new Recipe(128, new Ingredient(ItemID.SNAPDRAGON_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_SNAPDRAGON, NOMINAL_HERB_YIELD), "seed", 0f, 0),
+            new Recipe(129, new Ingredient(ItemID.CADANTINE_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_CADANTINE, NOMINAL_HERB_YIELD), "seed", 0f, 0),
+            new Recipe(130, new Ingredient(ItemID.LANTADYME_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_LANTADYME, NOMINAL_HERB_YIELD), "seed", 0f, 0),
+            new Recipe(131, new Ingredient(ItemID.DWARF_WEED_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_DWARF_WEED, NOMINAL_HERB_YIELD), "seed", 0f, 0),
+            new Recipe(132, new Ingredient(ItemID.TORSTOL_SEED, 1), NONE, new Ingredient(ItemID.UNIDENTIFIED_TORSTOL, NOMINAL_HERB_YIELD), "seed", 0f, 0),
+
+            // --- frags -> coral -------------------------------------------------
+            new Recipe(133, new Ingredient(ItemID.CORAL_ELKHORN_FRAG, 1), NONE, new Ingredient(ItemID.CORAL_ELKHORN, NOMINAL_CORAL_YIELD), "seed", 0f, 0),
+            new Recipe(134, new Ingredient(ItemID.CORAL_PILLAR_FRAG, 1), NONE, new Ingredient(ItemID.CORAL_PILLAR, NOMINAL_CORAL_YIELD), "seed", 0f, 0),
+            new Recipe(135, new Ingredient(ItemID.CORAL_UMBRAL_FRAG, 1), NONE, new Ingredient(ItemID.CORAL_UMBRAL, NOMINAL_CORAL_YIELD), "seed", 0f, 0)
     );
 
     /**
