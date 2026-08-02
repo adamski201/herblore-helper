@@ -4,7 +4,6 @@ import adamski.app.HerbloreApp;
 import adamski.data.HerbloreRecipes;
 import adamski.data.PotionDoses;
 import adamski.domain.models.ItemSource;
-import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.events.ClientTick;
@@ -33,6 +32,11 @@ public class RuneLiteAdapter {
 
     private final Map<ItemSource, Map<Integer, Integer>> pending = new EnumMap<>(ItemSource.class);
 
+    private final Map<Integer, ItemSource> inventoryItemSources = Map.of(
+            InventoryID.BANK, ItemSource.Bank,
+            InventoryID.SEED_VAULT, ItemSource.SeedVault
+    );
+
     @Inject
     public RuneLiteAdapter(ItemManager itemManager, PotionStorageAdapter potionStorage, HerbloreApp app) {
         this.itemManager = itemManager;
@@ -42,12 +46,10 @@ public class RuneLiteAdapter {
 
     @Subscribe
     public void onItemContainerChanged(ItemContainerChanged event) {
-        final var containerId = event.getContainerId();
-        if (containerId != InventoryID.BANK && containerId != InventoryID.SEED_VAULT) {
-            return;
-        }
+        final var itemSource = inventoryItemSources.get(event.getContainerId());
+        if (itemSource == null) return;
 
-        pending.put(ItemSource.Bank, getItemQuantitiesFromContainer(event.getItemContainer()));
+        pending.put(itemSource, getItemQuantitiesFromContainer(event.getItemContainer()));
     }
 
     @Subscribe
