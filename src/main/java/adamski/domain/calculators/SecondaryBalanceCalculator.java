@@ -10,19 +10,13 @@ import java.util.Map;
 
 /**
  * What the planned runs will cost in secondaries, netted against what is held.
- * <p>
- * A fold over {@link RecipeYieldCalculator} output, like the XP calculator. Sharing the same runs
- * is what stops the shopping list and the XP total from being computed off different numbers.
- * <p>
- * Note that secondaries never constrain the cascade - it assumes they are purchasable. This is the
- * view that tells the player what purchasing that actually implies.
  */
 public final class SecondaryBalanceCalculator {
     private SecondaryBalanceCalculator() {
     }
 
     /**
-     * @param yields how many times each recipe runs, from {@link RecipeYieldCalculator}
+     * @param yields how many times each recipe runs
      * @param owned  quantities in 1-dose units, the same map the cascade was given
      */
     public static SecondaryBalance calculate(List<RecipeRun> yields, Map<Integer, Integer> owned) {

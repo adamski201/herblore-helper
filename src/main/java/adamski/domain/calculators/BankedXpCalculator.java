@@ -9,9 +9,6 @@ import java.util.Map;
 
 /**
  * How much Herblore XP a set of recipe runs is worth.
- * <p>
- * A fold over {@link RecipeYieldCalculator} output - all the ordering and propagation happens
- * there, so there is nothing subtle left here.
  */
 public final class BankedXpCalculator {
     private BankedXpCalculator() {
@@ -29,7 +26,9 @@ public final class BankedXpCalculator {
             if (xp == 0) continue;
 
             total += xp;
-            xpPerRecipe.put(yield.getRecipe().getId(), xp);
+
+            // Merged - one cascade per owned item means a recipe arrives once per root
+            xpPerRecipe.merge(yield.getRecipe().getId(), xp, Double::sum);
         }
 
         return new BankedXpResult(total, xpPerRecipe);

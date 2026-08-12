@@ -1,15 +1,21 @@
 package adamski.app;
 
+import adamski.data.RecipePaths;
 import adamski.domain.models.BankedXpResult;
 import adamski.domain.models.ItemSource;
+import adamski.domain.models.RecipeGroup;
+import adamski.domain.models.RecipeStage;
 import adamski.domain.models.SecondaryBalance;
 import net.runelite.api.gameval.ItemID;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -17,18 +23,13 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Drives the whole pipeline - store, source merge, real recipe table, both calculators. These
- * numbers move if HerbloreRecipes is reordered or reweighted, which is the point.
+ * Drives the whole pipeline against the real recipe table, so these numbers move if it does.
  */
 public class HerbloreAppTest {
     private static final double DELTA = 0.0001;
 
     /**
-     * One grimy ranarr followed all the way down under first-in-table-order selection: r5 degrime
-     * 7.5, r20 unf 0, then r44 defence potion 75.
-     * <p>
-     * The chain stops at the potion. Caviar mixes are driven by brutal caviar, not by the potion,
-     * so a defence potion is terminal.
+     * r5 degrime 7.5, r20 unf 0, r44 defence potion 75. Terminal - caviar mixes run off caviar.
      */
     private static final double GRIMY_RANARR_XP = 82.5;
 
@@ -80,8 +81,7 @@ public class HerbloreAppTest {
 
     @Test
     public void onlyOneCaviarMixIsReachableUntilConfigLands() {
-        // All 23 mixes now share brutal caviar as their primary, and the selection is one recipe
-        // per primary, so first in table order takes the lot.
+        // All 23 mixes share brutal caviar, so first in table order takes the lot
         final BankedXpResult result = bank(items(ItemID.BRUT_CAVIAR, 1));
 
         assertEquals(1, result.getXpPerRecipe().size());
@@ -110,8 +110,7 @@ public class HerbloreAppTest {
 
     @Test
     public void firstRecipeInTableOrderWins() {
-        // TORSTOL feeds r30 (unf, 0xp) and r81 (super combat, 150xp). r30 comes first in the table,
-        // so torstol becomes unf and goes on to r60 zamorak brew rather than super combat.
+        // Torstol feeds r30 (unf) and r81 (super combat); r30 wins, so r60 zamorak brew follows
         final BankedXpResult result = bank(items(ItemID.TORSTOL, 1));
 
         assertTrue(result.getXpPerRecipe().containsKey(60));
@@ -120,8 +119,7 @@ public class HerbloreAppTest {
 
     @Test
     public void firstRecipeWinsWhenBothCandidatesAreZeroXp() {
-        // TOADFLAX feeds r21 (toadflax unf) and r32 (antidote+ unf), both worth nothing. r21 comes
-        // first, so the chain continues through r45 agility potion, not r66 antidote+.
+        // Toadflax feeds r21 and r32, both 0xp; r21 wins, so r45 agility follows, not r66 antidote+
         final BankedXpResult result = bank(items(ItemID.TOADFLAX, 1));
 
         assertTrue(result.getXpPerRecipe().containsKey(45));
@@ -130,14 +128,12 @@ public class HerbloreAppTest {
 
     @Test
     public void secondaryOnlyItemsAreIgnored() {
-        // Snape grass is a secondary of r47 and nothing's primary, so it is worth nothing alone
         assertEquals(0, bank(items(ItemID.SNAPE_GRASS, 100)).getTotal(), DELTA);
     }
 
     @Test
     public void secondaryDemandComesFromTheSameRuns() {
-        // One grimy ranarr runs r20 once (a vial of water) and r44 once (white berries), and
-        // nothing else is consumed on that chain
+        // One grimy ranarr runs r20 once (vial of water) and r44 once (white berries)
         final SecondaryBalance balance = bankBalance(items(ItemID.UNIDENTIFIED_RANARR, 1));
 
         assertEquals(1.0, balance.getDemanded().get(ItemID.VIAL_WATER), DELTA);
@@ -153,6 +149,72 @@ public class HerbloreAppTest {
 
         assertEquals(-4.0, balance.getNet().get(ItemID.VIAL_WATER), DELTA); // none held
         assertEquals(6.0, balance.getNet().get(ItemID.WHITE_BERRIES), DELTA); // 10 held, 4 needed
+    }
+
+    @Test
+    public void partitioningTheBankDoesNotChangeTheTotal() {
+        final Map<Integer, Integer> bank = items(ItemID.UNIDENTIFIED_RANARR, 1);
+        bank.put(ItemID.RANARRVIAL, 1);
+
+        final BankedXpResult result = bank(bank);
+
+        assertEquals(GRIMY_RANARR_XP + 75.0, result.getTotal(), DELTA);
+        assertEquals(150.0, result.getXpPerRecipe().get(44), DELTA); // one run from each root
+    }
+
+    @Test
+    public void everyPathIsAccountedForInTheTotal() {
+        final Map<Integer, Integer> bank = items(ItemID.UNIDENTIFIED_RANARR, 40);
+        bank.put(ItemID.RANARRVIAL, 25);
+        bank.put(ItemID.BRUT_CAVIAR, 12);
+        bank.put(ItemID.HARRALANDER_SEED, 3);
+
+        app.sourcesUpdated(source(ItemSource.Bank, bank));
+
+        final double summed = app.getGroups().stream()
+                .flatMap(group -> group.getStages().stream())
+                .flatMap(stage -> stage.getRuns().stream())
+                .mapToDouble(run -> run.getRuns() * run.getRecipe().getXp())
+                .sum();
+
+        assertEquals(app.getBankedXp().getTotal(), summed, DELTA);
+    }
+
+    @Test
+    public void everyMaturityOfAHerbIsAStageOnOnePath() {
+        final Map<Integer, Integer> bank = items(ItemID.RANARR_SEED, 2);
+        bank.put(ItemID.UNIDENTIFIED_RANARR, 40);
+        bank.put(ItemID.RANARRVIAL, 25);
+
+        app.sourcesUpdated(source(ItemSource.Bank, bank));
+
+        final RecipeGroup ranarr = app.getGroups().stream()
+                .filter(group -> group.getPathItemId() == RecipePaths.pathOf(ItemID.RANARR_WEED))
+                .findFirst()
+                .orElseThrow(AssertionError::new);
+
+        assertEquals(Arrays.asList(ItemID.RANARR_SEED, ItemID.UNIDENTIFIED_RANARR, ItemID.RANARRVIAL),
+                ranarr.getStages().stream().map(RecipeStage::getRootItemId).collect(Collectors.toList()));
+    }
+
+    @Test
+    public void caviarMixesAreTheirOwnPathNotTheHerbs() {
+        final Map<Integer, Integer> bank = items(ItemID.UNIDENTIFIED_HARRALANDER, 20);
+        bank.put(ItemID.BRUT_CAVIAR, 10);
+
+        app.sourcesUpdated(source(ItemSource.Bank, bank));
+
+        final Set<Integer> paths = app.getGroups().stream()
+                .map(RecipeGroup::getPathItemId)
+                .collect(Collectors.toSet());
+
+        assertTrue(paths.contains(RecipePaths.pathOf(ItemID.HARRALANDER)));
+        assertTrue(paths.contains(RecipePaths.pathOf(ItemID.BRUT_CAVIAR)));
+    }
+
+    @Test
+    public void noPathsUntilASourceIsRead() {
+        assertNull(app.getGroups());
     }
 
     @Test

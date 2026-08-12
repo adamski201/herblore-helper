@@ -7,19 +7,13 @@ import lombok.ToString;
 import java.util.Map;
 
 /**
- * What the planned recipe runs need in secondaries, and how that compares to what is held.
- * <p>
- * Only items some recipe actually consumes as a secondary appear. An item nothing demands has
- * nothing to say about it, and netting a primary here would be meaningless - primaries are consumed
- * by the cascade, not bought.
+ * What the planned recipe runs need in secondaries, and how that compares to what is held. Only
+ * items some recipe consumes as a secondary appear.
  */
 @Getter
 @EqualsAndHashCode
 @ToString
 public final class SecondaryBalance {
-    /**
-     * Total quantity required across every recipe that runs, keyed by item id.
-     */
     private final Map<Integer, Double> demanded;
 
     /**

@@ -60,6 +60,14 @@ public class BankedXpCalculatorTest {
     }
 
     @Test
+    public void aRecipeAppearingTwiceSumsRatherThanOverwriting() {
+        final BankedXpResult result = calculate(run(WORTH_TWENTY, 4), run(WORTH_TWENTY, 6));
+
+        assertEquals(200.0, result.getXpPerRecipe().get(11), DELTA);
+        assertEquals(200.0, result.getTotal(), DELTA);
+    }
+
+    @Test
     public void noRunsIsZero() {
         final BankedXpResult result = BankedXpCalculator.calculate(Collections.emptyList());
 

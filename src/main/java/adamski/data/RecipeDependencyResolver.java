@@ -24,7 +24,6 @@ public final class RecipeDependencyResolver {
     private static final List<Integer> ORDER;
 
     static {
-        // Nodes are every id appearing as a primary or an output. Secondaries are not nodes.
         final Set<Integer> nodes = new LinkedHashSet<>();
         final Map<Integer, Set<Integer>> successors = new HashMap<>();
         final Map<Integer, Integer> inDegree = new HashMap<>();

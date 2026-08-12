@@ -16,9 +16,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class HerblorePanel extends PluginPanel implements HerbloreListener {
-    /**
-     * Recipes are identified by id in the result; the panel labels them by what they consume.
-     */
     private static final Map<Integer, Integer> PRIMARY_BY_RECIPE = HerbloreRecipes.all().stream()
             .collect(Collectors.toMap(Recipe::getId, recipe -> recipe.getPrimary().getItemId()));
 
@@ -47,8 +44,7 @@ public class HerblorePanel extends PluginPanel implements HerbloreListener {
                                Map<ItemSource, Map<Integer, Integer>> delta,
                                BankedXpResult bankedXp,
                                SecondaryBalance secondaryBalance) {
-        // Called on the client thread. Item names have to be resolved here, because ItemManager
-        // cannot be touched from the EDT - only the finished strings cross over.
+        // Names resolve here - ItemManager cannot be touched from the EDT
         final String text = formatItems(snapshot) + formatXp(bankedXp) + formatSecondaries(secondaryBalance);
         final String total = String.format("Banked XP: %,.0f", bankedXp.getTotal());
 
@@ -76,10 +72,6 @@ public class HerblorePanel extends PluginPanel implements HerbloreListener {
         return sb.toString();
     }
 
-    /**
-     * One line per recipe that earned anything, labelled by what it consumes. The calculator omits
-     * zero-XP recipes, so every line here is a real contribution.
-     */
     private String formatXp(BankedXpResult bankedXp) {
         final StringBuilder sb = new StringBuilder("XP by primary\n");
 
@@ -91,10 +83,6 @@ public class HerblorePanel extends PluginPanel implements HerbloreListener {
         return sb.toString();
     }
 
-    /**
-     * Secondaries you are short of, worst first, then the ones you have spare. Only items some
-     * recipe actually consumes appear - the balance has nothing to say about anything else.
-     */
     private String formatSecondaries(SecondaryBalance balance) {
         if (balance.getNet().isEmpty()) return "";
 
@@ -112,8 +100,8 @@ public class HerblorePanel extends PluginPanel implements HerbloreListener {
     }
 
     /**
-     * The panel is about 32 monospace characters wide, so numbers go first in a narrow column -
-     * anything right-aligned past the item name gets clipped off the edge and silently vanishes.
+     * Numbers go first - the panel is about 32 monospace characters wide, and anything right-aligned
+     * past the item name is clipped off the edge without warning.
      */
     private static String abbreviate(double value) {
         final String sign = value < 0 ? "-" : "";

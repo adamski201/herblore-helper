@@ -8,8 +8,7 @@ import java.util.Map;
 
 public interface HerbloreListener {
     /**
-     * Called on the client thread, so any RuneLite lookup a listener needs - item names, for
-     * instance - has to happen before it hops to the EDT.
+     * Called on the client thread, so any RuneLite lookup has to happen before hopping to the EDT.
      */
     void onStateChanged(Map<ItemSource, Map<Integer, Integer>> snapshot,
                         Map<ItemSource, Map<Integer, Integer>> delta,

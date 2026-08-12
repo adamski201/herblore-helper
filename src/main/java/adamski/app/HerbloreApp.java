@@ -2,12 +2,15 @@ package adamski.app;
 
 import adamski.data.HerbloreRecipes;
 import adamski.data.RecipeDependencyResolver;
+import adamski.data.RecipePaths;
 import adamski.domain.calculators.BankedXpCalculator;
+import adamski.domain.calculators.RecipeGrouper;
 import adamski.domain.calculators.RecipeYieldCalculator;
 import adamski.domain.calculators.SecondaryBalanceCalculator;
 import adamski.domain.models.BankedXpResult;
 import adamski.domain.models.ItemSource;
 import adamski.domain.models.Recipe;
+import adamski.domain.models.RecipeGroup;
 import adamski.domain.models.RecipeRun;
 import adamski.domain.models.SecondaryBalance;
 import lombok.Getter;
@@ -23,29 +26,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
 
 /**
  * Orchestrator - receives changes from the adapter, updates state via the store, runs the
  * calculators and publishes to listeners.
- * <p>
- * The recipe table, the source merge and the yield cascade all get resolved here. The calculators
- * themselves are domain rules and know none of it.
  */
 @Slf4j
 @Singleton
 public class HerbloreApp {
-    /**
-     * Which containers count towards the total. Inventory is never populated by the adapter, and
-     * whether it should count as banked is still open.
-     */
     private static final Set<ItemSource> COUNTED_SOURCES =
             EnumSet.of(ItemSource.Bank, ItemSource.PotionStorage, ItemSource.SeedVault);
 
     /**
-     * One recipe per primary item, in dependency order.
-     * <p>
-     * First in table order wins where several recipes consume the same item - a placeholder for
-     * user config, which will pick one recipe per primary. Only the choice changes, not the shape.
+     * One recipe per primary item, in dependency order. First in table order wins until config
+     * lands.
      */
     private static final List<Recipe> RECIPES;
 
@@ -74,6 +69,9 @@ public class HerbloreApp {
     @Getter
     private volatile SecondaryBalance secondaryBalance;
 
+    @Getter
+    private volatile List<RecipeGroup> groups;
+
     @Inject
     public HerbloreApp(HerbloreStore store) {
         this.store = store;
@@ -94,14 +92,34 @@ public class HerbloreApp {
         final var snapshot = store.getState();
         final var owned = merge(snapshot);
 
-        // Resolved once, then folded twice. Sharing the runs is what stops the XP total and the
-        // shopping list from being computed off different numbers.
-        final List<RecipeRun> yields = RecipeYieldCalculator.calculate(owned, RECIPES);
+        final Map<Integer, List<RecipeRun>> byRoot = partition(owned);
+
+        final List<RecipeRun> yields = byRoot.values().stream()
+                .flatMap(List::stream)
+                .collect(Collectors.toList());
+
         bankedXp = BankedXpCalculator.calculate(yields);
         secondaryBalance = SecondaryBalanceCalculator.calculate(yields, owned);
+        groups = RecipeGrouper.group(byRoot, RecipePaths.PathsByItem(), RECIPES);
 
         log.debug("sources changed: {}, banked xp: {}", delta.keySet(), bankedXp.getTotal());
         publish(snapshot, delta, bankedXp, secondaryBalance);
+    }
+
+    /**
+     * One cascade run per owned item, so that runs stay attributable to what was banked.
+     */
+    private static Map<Integer, List<RecipeRun>> partition(Map<Integer, Integer> owned) {
+        final Map<Integer, List<RecipeRun>> byRoot = new HashMap<>();
+
+        owned.forEach((itemId, quantity) -> {
+            final List<RecipeRun> runs =
+                    RecipeYieldCalculator.calculate(Collections.singletonMap(itemId, quantity), RECIPES);
+
+            if (!runs.isEmpty()) byRoot.put(itemId, runs);
+        });
+
+        return byRoot;
     }
 
     private static Map<Integer, Integer> merge(Map<ItemSource, Map<Integer, Integer>> snapshot) {
