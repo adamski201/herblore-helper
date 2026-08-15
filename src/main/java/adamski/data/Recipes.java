@@ -11,7 +11,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public final class HerbloreRecipes {
+public final class Recipes {
     private static final Ingredient[] NONE = new Ingredient[0];
 
     // Placeholder values - overridden by user config
@@ -200,55 +200,57 @@ public final class HerbloreRecipes {
                     new Ingredient(ItemID._1DOSE2ANTIDRAGON, 1), "potion", 27.5f, 0),
             new Recipe(93, new Ingredient(ItemID._1DOSE3ANTIDRAGON, 1), new Ingredient[]{new Ingredient(ItemID.LAVA_SHARD, 1)},
                     new Ingredient(ItemID._1DOSE4ANTIDRAGON, 1), "potion", 40f, 0),
+            new Recipe(136, new Ingredient(ItemID._1DOSE2ANTIDRAGON, 4), new Ingredient[]{new Ingredient(ItemID.CRUSHED_DRAGON_BONES, 1)},
+                    new Ingredient(ItemID._1DOSE4ANTIDRAGON, 4), "potion", 180f, 98),
             new Recipe(94, new Ingredient(ItemID._1DOSEANCIENTBREW, 1), new Ingredient[]{new Ingredient(ItemID.ANCIENT_ESSENCE, 20)},
                     new Ingredient(ItemID._1DOSEFORGOTTENBREW, 1), "potion", 36f, 0),
 
             // --- caviar mixes --------------------------------------------
-            new Recipe(95, new Ingredient(ItemID._1DOSE1ENERGY, 2), new Ingredient[]{new Ingredient(ItemID.BRUT_CAVIAR, 1)},
+            new Recipe(95, new Ingredient(ItemID.BRUT_CAVIAR, 1), new Ingredient[]{new Ingredient(ItemID._1DOSE1ENERGY, 2)},
                     new Ingredient(ItemID.BRUTAL_1DOSE1ENERGY, 2), "caviar", 23f, 0),
-            new Recipe(96, new Ingredient(ItemID._1DOSE1DEFENSE, 2), new Ingredient[]{new Ingredient(ItemID.BRUT_CAVIAR, 1)},
+            new Recipe(96, new Ingredient(ItemID.BRUT_CAVIAR, 1), new Ingredient[]{new Ingredient(ItemID._1DOSE1DEFENSE, 2)},
                     new Ingredient(ItemID.BRUTAL_1DOSE1DEFENSE, 2), "caviar", 25f, 0),
-            new Recipe(97, new Ingredient(ItemID._1DOSE1AGILITY, 2), new Ingredient[]{new Ingredient(ItemID.BRUT_CAVIAR, 1)},
+            new Recipe(97, new Ingredient(ItemID.BRUT_CAVIAR, 1), new Ingredient[]{new Ingredient(ItemID._1DOSE1AGILITY, 2)},
                     new Ingredient(ItemID.BRUTAL_1DOSE1AGILITY, 2), "caviar", 27f, 0),
-            new Recipe(98, new Ingredient(ItemID._1DOSECOMBAT, 2), new Ingredient[]{new Ingredient(ItemID.BRUT_CAVIAR, 1)},
+            new Recipe(98, new Ingredient(ItemID.BRUT_CAVIAR, 1), new Ingredient[]{new Ingredient(ItemID._1DOSECOMBAT, 2)},
                     new Ingredient(ItemID.BRUTAL_1DOSECOMBAT, 2), "caviar", 28f, 0),
-            new Recipe(99, new Ingredient(ItemID._1DOSEPRAYERRESTORE, 2), new Ingredient[]{new Ingredient(ItemID.BRUT_CAVIAR, 1)},
+            new Recipe(99, new Ingredient(ItemID.BRUT_CAVIAR, 1), new Ingredient[]{new Ingredient(ItemID._1DOSEPRAYERRESTORE, 2)},
                     new Ingredient(ItemID.BRUTAL_1DOSEPRAYERRESTORE, 2), "caviar", 29f, 0),
-            new Recipe(100, new Ingredient(ItemID._1DOSE2ATTACK, 2), new Ingredient[]{new Ingredient(ItemID.BRUT_CAVIAR, 1)},
+            new Recipe(100, new Ingredient(ItemID.BRUT_CAVIAR, 1), new Ingredient[]{new Ingredient(ItemID._1DOSE2ATTACK, 2)},
                     new Ingredient(ItemID.BRUTAL_1DOSE2ATTACK, 2), "caviar", 33f, 0),
-            new Recipe(101, new Ingredient(ItemID._1DOSE2ANTIPOISON, 2), new Ingredient[]{new Ingredient(ItemID.BRUT_CAVIAR, 1)},
+            new Recipe(101, new Ingredient(ItemID.BRUT_CAVIAR, 1), new Ingredient[]{new Ingredient(ItemID._1DOSE2ANTIPOISON, 2)},
                     new Ingredient(ItemID.BRUTAL_1DOSE2ANTIPOISON, 2), "caviar", 35f, 0),
-            new Recipe(102, new Ingredient(ItemID._1DOSEFISHERSPOTION, 2), new Ingredient[]{new Ingredient(ItemID.BRUT_CAVIAR, 1)},
+            new Recipe(102, new Ingredient(ItemID.BRUT_CAVIAR, 1), new Ingredient[]{new Ingredient(ItemID._1DOSEFISHERSPOTION, 2)},
                     new Ingredient(ItemID.BRUTAL_1DOSEFISHERSPOTION, 2), "caviar", 38f, 0),
-            new Recipe(103, new Ingredient(ItemID._1DOSE2ENERGY, 2), new Ingredient[]{new Ingredient(ItemID.BRUT_CAVIAR, 1)},
+            new Recipe(103, new Ingredient(ItemID.BRUT_CAVIAR, 1), new Ingredient[]{new Ingredient(ItemID._1DOSE2ENERGY, 2)},
                     new Ingredient(ItemID.BRUTAL_1DOSE2ENERGY, 2), "caviar", 39f, 0),
-            new Recipe(104, new Ingredient(ItemID._1DOSEHUNTING, 2), new Ingredient[]{new Ingredient(ItemID.BRUT_CAVIAR, 1)},
+            new Recipe(104, new Ingredient(ItemID.BRUT_CAVIAR, 1), new Ingredient[]{new Ingredient(ItemID._1DOSEHUNTING, 2)},
                     new Ingredient(ItemID.BRUTAL_1DOSE1HUNTING, 2), "caviar", 40f, 0),
-            new Recipe(105, new Ingredient(ItemID._1DOSE2STRENGTH, 2), new Ingredient[]{new Ingredient(ItemID.BRUT_CAVIAR, 1)},
+            new Recipe(105, new Ingredient(ItemID.BRUT_CAVIAR, 1), new Ingredient[]{new Ingredient(ItemID._1DOSE2STRENGTH, 2)},
                     new Ingredient(ItemID.BRUTAL_1DOSE2STRENGTH, 2), "caviar", 42f, 0),
-            new Recipe(106, new Ingredient(ItemID._1DOSE2RESTORE, 2), new Ingredient[]{new Ingredient(ItemID.BRUT_CAVIAR, 1)},
+            new Recipe(106, new Ingredient(ItemID.BRUT_CAVIAR, 1), new Ingredient[]{new Ingredient(ItemID._1DOSE2RESTORE, 2)},
                     new Ingredient(ItemID.BRUTAL_1DOSE2RESTORE, 2), "caviar", 48f, 0),
-            new Recipe(107, new Ingredient(ItemID._1DOSE2DEFENSE, 2), new Ingredient[]{new Ingredient(ItemID.BRUT_CAVIAR, 1)},
+            new Recipe(107, new Ingredient(ItemID.BRUT_CAVIAR, 1), new Ingredient[]{new Ingredient(ItemID._1DOSE2DEFENSE, 2)},
                     new Ingredient(ItemID.BRUTAL_1DOSE2DEFENSE, 2), "caviar", 50f, 0),
-            new Recipe(108, new Ingredient(ItemID.ANTIDOTE_1, 2), new Ingredient[]{new Ingredient(ItemID.BRUT_CAVIAR, 1)},
+            new Recipe(108, new Ingredient(ItemID.BRUT_CAVIAR, 1), new Ingredient[]{new Ingredient(ItemID.ANTIDOTE_1, 2)},
                     new Ingredient(ItemID.BRUTAL_ANTIDOTE_1, 2), "caviar", 52f, 0),
-            new Recipe(109, new Ingredient(ItemID._1DOSE1ANTIDRAGON, 2), new Ingredient[]{new Ingredient(ItemID.BRUT_CAVIAR, 1)},
+            new Recipe(109, new Ingredient(ItemID.BRUT_CAVIAR, 1), new Ingredient[]{new Ingredient(ItemID._1DOSE1ANTIDRAGON, 2)},
                     new Ingredient(ItemID.BRUTAL_1DOSE1ANTIDRAGON, 2), "caviar", 53f, 0),
-            new Recipe(110, new Ingredient(ItemID._1DOSERANGERSPOTION, 2), new Ingredient[]{new Ingredient(ItemID.BRUT_CAVIAR, 1)},
+            new Recipe(110, new Ingredient(ItemID.BRUT_CAVIAR, 1), new Ingredient[]{new Ingredient(ItemID._1DOSERANGERSPOTION, 2)},
                     new Ingredient(ItemID.BRUTAL_1DOSERANGERSPOTION, 2), "caviar", 54f, 0),
-            new Recipe(111, new Ingredient(ItemID._1DOSE1MAGIC, 2), new Ingredient[]{new Ingredient(ItemID.BRUT_CAVIAR, 1)},
+            new Recipe(111, new Ingredient(ItemID.BRUT_CAVIAR, 1), new Ingredient[]{new Ingredient(ItemID._1DOSE1MAGIC, 2)},
                     new Ingredient(ItemID.BRUTAL_1DOSE1MAGIC, 2), "caviar", 57f, 0),
-            new Recipe(112, new Ingredient(ItemID._1DOSEPOTIONOFZAMORAK, 2), new Ingredient[]{new Ingredient(ItemID.BRUT_CAVIAR, 1)},
+            new Recipe(112, new Ingredient(ItemID.BRUT_CAVIAR, 1), new Ingredient[]{new Ingredient(ItemID._1DOSEPOTIONOFZAMORAK, 2)},
                     new Ingredient(ItemID.BRUTAL_1DOSEPOTIONOFZAMORAK, 2), "caviar", 58f, 0),
-            new Recipe(113, new Ingredient(ItemID._1DOSESTAMINA, 2), new Ingredient[]{new Ingredient(ItemID.BRUT_CAVIAR, 1)},
+            new Recipe(113, new Ingredient(ItemID.BRUT_CAVIAR, 1), new Ingredient[]{new Ingredient(ItemID._1DOSESTAMINA, 2)},
                     new Ingredient(ItemID.BRUTAL_1DOSESTAMINA, 2), "caviar", 60f, 0),
-            new Recipe(114, new Ingredient(ItemID._1DOSE2ANTIDRAGON, 2), new Ingredient[]{new Ingredient(ItemID.BRUT_CAVIAR, 1)},
+            new Recipe(114, new Ingredient(ItemID.BRUT_CAVIAR, 1), new Ingredient[]{new Ingredient(ItemID._1DOSE2ANTIDRAGON, 2)},
                     new Ingredient(ItemID.BRUTAL_1DOSE2ANTIDRAGON, 2), "caviar", 61f, 0),
-            new Recipe(115, new Ingredient(ItemID._1DOSEANCIENTBREW, 2), new Ingredient[]{new Ingredient(ItemID.BRUT_CAVIAR, 1)},
+            new Recipe(115, new Ingredient(ItemID.BRUT_CAVIAR, 1), new Ingredient[]{new Ingredient(ItemID._1DOSEANCIENTBREW, 2)},
                     new Ingredient(ItemID.BRUTAL_1DOSEANCIENTBREW, 2), "caviar", 63f, 0),
-            new Recipe(116, new Ingredient(ItemID._1DOSE3ANTIDRAGON, 2), new Ingredient[]{new Ingredient(ItemID.BRUT_CAVIAR, 1)},
+            new Recipe(116, new Ingredient(ItemID.BRUT_CAVIAR, 1), new Ingredient[]{new Ingredient(ItemID._1DOSE3ANTIDRAGON, 2)},
                     new Ingredient(ItemID.BRUTAL_1DOSE3ANTIDRAGON, 2), "caviar", 70f, 0),
-            new Recipe(117, new Ingredient(ItemID._1DOSE4ANTIDRAGON, 2), new Ingredient[]{new Ingredient(ItemID.BRUT_CAVIAR, 1)},
+            new Recipe(117, new Ingredient(ItemID.BRUT_CAVIAR, 1), new Ingredient[]{new Ingredient(ItemID._1DOSE4ANTIDRAGON, 2)},
                     new Ingredient(ItemID.BRUTAL_1DOSE4ANTIDRAGON, 2), "caviar", 78f, 0),
 
             // --- seeds -> grimy herbs ------------------------------------
@@ -278,10 +280,10 @@ public final class HerbloreRecipes {
      * Every item id any recipe mentions - primaries, secondaries, outputs
      */
     private static final Set<Integer> RELEVANT_ITEM_IDS = RECIPES.stream()
-            .flatMap(HerbloreRecipes::getItemIdsForRecipe)
+            .flatMap(Recipes::getItemIdsForRecipe)
             .collect(Collectors.toSet());
 
-    private HerbloreRecipes() {
+    private Recipes() {
     }
 
     public static List<Recipe> all() {

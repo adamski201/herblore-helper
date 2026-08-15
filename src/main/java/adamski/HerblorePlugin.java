@@ -7,6 +7,7 @@ import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
@@ -25,6 +26,9 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
     private ClientToolbar clientToolbar;
 
     @Inject
+    private ItemManager itemManager;
+
+    @Inject
     private EventBus eventBus;
     @Inject
     private RuneLiteAdapter adapter;
@@ -38,7 +42,7 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
 
     @Override
     protected void startUp() throws Exception {
-        panel = new HerblorePanel();
+        panel = new HerblorePanel(itemManager);
 
         final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "icon.png");
         navButton = NavigationButton.builder().tooltip("Herblore Helper").icon(icon).priority(100).panel(panel).build();
