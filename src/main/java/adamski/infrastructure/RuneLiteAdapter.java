@@ -3,6 +3,7 @@ package adamski.infrastructure;
 import adamski.app.HerbloreApp;
 import adamski.data.Recipes;
 import adamski.data.PotionDoses;
+import adamski.domain.models.ItemQuantities;
 import adamski.domain.models.ItemSource;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
@@ -30,7 +31,7 @@ public class RuneLiteAdapter {
     private final PotionStorageAdapter potionStorage;
     private final HerbloreApp app;
 
-    private final Map<ItemSource, Map<Integer, Integer>> pending = new EnumMap<>(ItemSource.class);
+    private final Map<ItemSource, ItemQuantities> pending = new EnumMap<>(ItemSource.class);
 
     private final Map<Integer, ItemSource> inventoryItemSources = Map.of(
             InventoryID.BANK, ItemSource.Bank,
@@ -78,8 +79,8 @@ public class RuneLiteAdapter {
         pending.clear();
     }
 
-    private Map<Integer, Integer> getItemQuantitiesFromContainer(ItemContainer container) {
-        if (container == null) return Collections.emptyMap();
+    private ItemQuantities getItemQuantitiesFromContainer(ItemContainer container) {
+        if (container == null) return ItemQuantities.EMPTY;
 
         final Map<Integer, Integer> items = new HashMap<>();
 
@@ -100,6 +101,6 @@ public class RuneLiteAdapter {
             items.merge(canonicalId, doses, Integer::sum);
         }
 
-        return items;
+        return ItemQuantities.counted(items);
     }
 }

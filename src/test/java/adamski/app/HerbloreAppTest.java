@@ -3,6 +3,7 @@ package adamski.app;
 import adamski.data.RecipePaths;
 import adamski.domain.calculators.BankedXpCalculator;
 import adamski.domain.calculators.RecipeYieldCalculator;
+import adamski.domain.models.ItemQuantities;
 import adamski.domain.models.ItemSource;
 import adamski.domain.models.RecipeGroup;
 import adamski.domain.models.RecipeRun;
@@ -175,7 +176,7 @@ public class HerbloreAppTest {
 
         // The total is the sum of the paths, so grouping is checked against the ungrouped runs
         final List<RecipeRun> ungrouped = RecipeYieldCalculator
-                .calculateByBankedItem(bank, HerbloreApp.RECIPES).values().stream()
+                .calculateByBankedItem(ItemQuantities.counted(bank), HerbloreApp.RECIPES).values().stream()
                 .flatMap(List::stream)
                 .collect(Collectors.toList());
 
@@ -258,9 +259,9 @@ public class HerbloreAppTest {
 
     @Test
     public void countedSourcesAreSummedTogether() {
-        final Map<ItemSource, Map<Integer, Integer>> snapshot = new EnumMap<>(ItemSource.class);
-        snapshot.put(ItemSource.Bank, items(ItemID.UNIDENTIFIED_RANARR, 1));
-        snapshot.put(ItemSource.PotionStorage, items(ItemID.UNIDENTIFIED_RANARR, 1));
+        final Map<ItemSource, ItemQuantities> snapshot = new EnumMap<>(ItemSource.class);
+        snapshot.put(ItemSource.Bank, ItemQuantities.counted(items(ItemID.UNIDENTIFIED_RANARR, 1)));
+        snapshot.put(ItemSource.PotionStorage, ItemQuantities.counted(items(ItemID.UNIDENTIFIED_RANARR, 1)));
 
         app.sourcesUpdated(snapshot);
 
@@ -304,9 +305,9 @@ public class HerbloreAppTest {
         return app.getResult().getSecondaryBalance();
     }
 
-    private static Map<ItemSource, Map<Integer, Integer>> source(ItemSource source, Map<Integer, Integer> items) {
-        final Map<ItemSource, Map<Integer, Integer>> snapshot = new EnumMap<>(ItemSource.class);
-        snapshot.put(source, items);
+    private static Map<ItemSource, ItemQuantities> source(ItemSource source, Map<Integer, Integer> items) {
+        final Map<ItemSource, ItemQuantities> snapshot = new EnumMap<>(ItemSource.class);
+        snapshot.put(source, ItemQuantities.counted(items));
         return snapshot;
     }
 

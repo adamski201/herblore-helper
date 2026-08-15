@@ -1,5 +1,6 @@
 package adamski.app;
 
+import adamski.domain.models.ItemQuantities;
 import adamski.domain.models.ItemSource;
 import org.junit.Before;
 import org.junit.Test;
@@ -83,12 +84,12 @@ public class HerbloreStoreTest {
 
     @Test
     public void onlyMovedSourcesAppearInTheDelta() {
-        final Map<ItemSource, Map<Integer, Integer>> first = new EnumMap<>(ItemSource.class);
+        final Map<ItemSource, ItemQuantities> first = new EnumMap<>(ItemSource.class);
         first.put(ItemSource.Bank, items(1, 10));
         first.put(ItemSource.PotionStorage, items(2, 5));
         store.updateState(first);
 
-        final Map<ItemSource, Map<Integer, Integer>> second = new EnumMap<>(ItemSource.class);
+        final Map<ItemSource, ItemQuantities> second = new EnumMap<>(ItemSource.class);
         second.put(ItemSource.Bank, items(1, 10)); // unchanged
         second.put(ItemSource.PotionStorage, items(2, 8));
 
@@ -113,7 +114,7 @@ public class HerbloreStoreTest {
     public void snapshotIsImmutable() {
         store.updateState(batch(ItemSource.Bank, items(1, 10)));
 
-        store.getState().get(ItemSource.Bank).put(2, 5);
+        store.getState().put(ItemSource.PotionStorage, ItemQuantities.EMPTY);
     }
 
     @Test
@@ -128,8 +129,8 @@ public class HerbloreStoreTest {
         assertEquals(items(1, 10), snapshot.get(ItemSource.Bank));
     }
 
-    private static Map<ItemSource, Map<Integer, Integer>> batch(ItemSource source, Map<Integer, Integer> items) {
-        final Map<ItemSource, Map<Integer, Integer>> batch = new EnumMap<>(ItemSource.class);
+    private static Map<ItemSource, ItemQuantities> batch(ItemSource source, ItemQuantities items) {
+        final Map<ItemSource, ItemQuantities> batch = new EnumMap<>(ItemSource.class);
         batch.put(source, items);
         return batch;
     }
@@ -137,11 +138,11 @@ public class HerbloreStoreTest {
     /**
      * @param pairs alternating itemId and quantity
      */
-    private static Map<Integer, Integer> items(int... pairs) {
+    private static ItemQuantities items(int... pairs) {
         final Map<Integer, Integer> items = new HashMap<>();
         for (int i = 0; i < pairs.length; i += 2) {
             items.put(pairs[i], pairs[i + 1]);
         }
-        return items;
+        return ItemQuantities.counted(items);
     }
 }

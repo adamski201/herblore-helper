@@ -2,6 +2,7 @@ package adamski.ui;
 
 import adamski.app.HerbloreListener;
 import adamski.app.HerbloreResult;
+import adamski.domain.models.ItemQuantities;
 import adamski.domain.models.RecipeGroup;
 import adamski.domain.models.RecipeStage;
 import adamski.domain.models.RecipeStep;
@@ -85,18 +86,18 @@ public class HerblorePanel extends PluginPanel implements HerbloreListener {
 
         final StringBuilder sb = new StringBuilder("\nSecondaries\n");
 
-        balance.getNet().entrySet().stream()
+        balance.getNet().asMap().entrySet().stream()
                 .sorted(Map.Entry.comparingByValue())
                 .forEach(e -> sb.append(String.format("%7s  %s%n", abbreviate(e.getValue()), name(e.getKey()))));
 
         return sb.toString();
     }
 
-    private String formatItems(Map<Integer, Integer> owned) {
+    private String formatItems(ItemQuantities owned) {
         final StringBuilder sb = new StringBuilder("\nBanked\n");
 
-        owned.entrySet().stream()
-                .collect(Collectors.toMap(e -> name(e.getKey()), Map.Entry::getValue, Integer::sum))
+        owned.asMap().entrySet().stream()
+                .collect(Collectors.toMap(e -> name(e.getKey()), Map.Entry::getValue, Double::sum))
                 .entrySet().stream()
                 .sorted(Map.Entry.comparingByKey(Comparator.naturalOrder()))
                 .forEach(e -> sb.append(String.format("%7s  %s%n", abbreviate(e.getValue()), e.getKey())));

@@ -1,6 +1,7 @@
 package adamski.domain.calculators;
 
 import adamski.domain.models.Ingredient;
+import adamski.domain.models.ItemQuantities;
 import adamski.domain.models.Recipe;
 import adamski.domain.models.RecipeRun;
 import org.junit.Test;
@@ -100,7 +101,7 @@ public class RecipeYieldCalculatorTest {
         owned.put(2, 10);
 
         final Map<Integer, List<RecipeRun>> byBankedItem = RecipeYieldCalculator.calculateByBankedItem(
-                owned, Arrays.asList(ONE_TO_TWO, TWO_TO_THREE));
+                ItemQuantities.counted(owned), Arrays.asList(ONE_TO_TWO, TWO_TO_THREE));
 
         assertEquals(2, byBankedItem.get(1).size()); // through both recipes
         assertEquals(1, byBankedItem.get(2).size()); // joins at the second
@@ -114,7 +115,7 @@ public class RecipeYieldCalculatorTest {
         owned.put(99, 500);
 
         final Map<Integer, List<RecipeRun>> byBankedItem = RecipeYieldCalculator.calculateByBankedItem(
-                owned, Collections.singletonList(ONE_TO_TWO));
+                ItemQuantities.counted(owned), Collections.singletonList(ONE_TO_TWO));
 
         assertEquals(Collections.singleton(1), byBankedItem.keySet());
     }

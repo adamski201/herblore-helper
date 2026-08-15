@@ -5,6 +5,7 @@ import adamski.data.RecipeRoutes;
 import adamski.domain.calculators.RecipeGrouper;
 import adamski.domain.calculators.RecipeYieldCalculator;
 import adamski.domain.calculators.SecondaryBalanceCalculator;
+import adamski.domain.models.ItemQuantities;
 import adamski.domain.models.ItemSource;
 import adamski.domain.models.Recipe;
 import lombok.Getter;
@@ -55,7 +56,7 @@ public class HerbloreApp {
         listeners.remove(listener);
     }
 
-    public void sourcesUpdated(Map<ItemSource, Map<Integer, Integer>> changed) {
+    public void sourcesUpdated(Map<ItemSource, ItemQuantities> changed) {
         final var delta = store.updateState(changed);
         if (delta.isEmpty()) return;
 
@@ -76,12 +77,11 @@ public class HerbloreApp {
         publishResult(result);
     }
 
-    private static Map<Integer, Integer> mergeSources(Map<ItemSource, Map<Integer, Integer>> snapshot) {
-        final Map<Integer, Integer> merged = new HashMap<>();
+    private static ItemQuantities mergeSources(Map<ItemSource, ItemQuantities> snapshot) {
+        ItemQuantities merged = ItemQuantities.EMPTY;
 
         for (ItemSource source : SOURCES) {
-            snapshot.getOrDefault(source, Collections.emptyMap())
-                    .forEach((itemId, quantity) -> merged.merge(itemId, quantity, Integer::sum));
+            merged = merged.plus(snapshot.getOrDefault(source, ItemQuantities.EMPTY));
         }
 
         return merged;

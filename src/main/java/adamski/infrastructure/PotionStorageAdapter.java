@@ -2,6 +2,7 @@ package adamski.infrastructure;
 
 import adamski.data.Recipes;
 import adamski.data.PotionDoses;
+import adamski.domain.models.ItemQuantities;
 import net.runelite.api.Client;
 import net.runelite.api.EnumComposition;
 import net.runelite.api.EnumID;
@@ -55,10 +56,10 @@ public class PotionStorageAdapter {
     /**
      * @return a map of potion doses (by canonical, single-dose item ID) if a change occurred; otherwise null
      */
-    public Map<Integer, Integer> poll() {
+    public ItemQuantities poll() {
         if (!dirty) return null;
         dirty = false;
-        return getPotions();
+        return ItemQuantities.counted(getPotions());
     }
 
     private void initialiseVarps() {

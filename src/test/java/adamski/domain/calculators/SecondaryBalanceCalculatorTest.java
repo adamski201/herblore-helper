@@ -1,6 +1,7 @@
 package adamski.domain.calculators;
 
 import adamski.domain.models.Ingredient;
+import adamski.domain.models.ItemQuantities;
 import adamski.domain.models.Recipe;
 import adamski.domain.models.RecipeRun;
 import adamski.domain.models.SecondaryBalance;
@@ -73,8 +74,8 @@ public class SecondaryBalanceCalculatorTest {
         // 99 is held but no recipe consumes it, so the balance has nothing to say
         final SecondaryBalance balance = calculate(owned(99, 500), run(NEEDS_ONE_OF_50, 1));
 
-        assertFalse(balance.getNet().containsKey(99));
-        assertTrue(balance.getNet().containsKey(50));
+        assertFalse(balance.getNet().itemIds().contains(99));
+        assertTrue(balance.getNet().itemIds().contains(50));
     }
 
     @Test
@@ -102,7 +103,7 @@ public class SecondaryBalanceCalculatorTest {
         assertEquals(-1.0, balance.getNet().get(50), DELTA);
     }
 
-    private static SecondaryBalance calculate(Map<Integer, Integer> owned, RecipeRun... yields) {
+    private static SecondaryBalance calculate(ItemQuantities owned, RecipeRun... yields) {
         final List<RecipeRun> list = Arrays.asList(yields);
         return SecondaryBalanceCalculator.calculate(list, owned);
     }
@@ -111,12 +112,12 @@ public class SecondaryBalanceCalculatorTest {
         return new RecipeRun(recipe, runs);
     }
 
-    private static Map<Integer, Integer> owned(int... pairs) {
+    private static ItemQuantities owned(int... pairs) {
         final Map<Integer, Integer> items = new HashMap<>();
         for (int i = 0; i < pairs.length; i += 2) {
             items.put(pairs[i], pairs[i + 1]);
         }
-        return items;
+        return ItemQuantities.counted(items);
     }
 
     private static Recipe recipe(int id, int primaryId, Ingredient... secondaries) {

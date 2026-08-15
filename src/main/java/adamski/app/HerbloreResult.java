@@ -1,5 +1,6 @@
 package adamski.app;
 
+import adamski.domain.models.ItemQuantities;
 import adamski.domain.models.RecipeGroup;
 import adamski.domain.models.SecondaryBalance;
 import lombok.EqualsAndHashCode;
@@ -17,9 +18,9 @@ import java.util.Map;
 @ToString
 public final class HerbloreResult {
     /**
-     * Counted sources merged, in 1-dose units.
+     * Counted sources merged.
      */
-    private final Map<Integer, Integer> owned;
+    private final ItemQuantities owned;
 
     private final List<RecipeGroup> paths;
 
@@ -30,10 +31,10 @@ public final class HerbloreResult {
 
     private final SecondaryBalance secondaryBalance;
 
-    public HerbloreResult(Map<Integer, Integer> owned,
+    public HerbloreResult(ItemQuantities owned,
                           List<RecipeGroup> paths,
                           SecondaryBalance secondaryBalance) {
-        this.owned = Map.copyOf(owned);
+        this.owned = owned;
         this.paths = List.copyOf(paths);
         this.totalXp = this.paths.stream().mapToDouble(RecipeGroup::getXp).sum();
         this.secondaryBalance = secondaryBalance;

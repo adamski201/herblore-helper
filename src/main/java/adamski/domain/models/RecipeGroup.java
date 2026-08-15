@@ -5,7 +5,6 @@ import lombok.Getter;
 import lombok.ToString;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * One path ending at one product, with its xp broken down by the item it came from and by the recipe
@@ -43,7 +42,7 @@ public final class RecipeGroup {
      */
     private final double outputQuantity;
 
-    private final Map<Integer, Double> secondaryDemand;
+    private final ItemQuantities secondaryDemand;
 
     private final double xp;
 
@@ -52,7 +51,7 @@ public final class RecipeGroup {
                        List<RecipeStage> stages,
                        List<RecipeStep> steps,
                        double outputQuantity,
-                       Map<Integer, Double> secondaryDemand,
+                       ItemQuantities secondaryDemand,
                        double xp) {
         if (stages.isEmpty()) throw new IllegalArgumentException("a group needs at least one stage");
 
@@ -61,7 +60,7 @@ public final class RecipeGroup {
         this.stages = List.copyOf(stages);
         this.steps = List.copyOf(steps);
         this.outputQuantity = outputQuantity;
-        this.secondaryDemand = Map.copyOf(secondaryDemand);
+        this.secondaryDemand = secondaryDemand;
         this.xp = xp;
     }
 
