@@ -21,7 +21,7 @@ public class RecipeDependencyResolverTest {
     @Test
     public void orderHoldsEveryPrimaryAndOutputExactlyOnce() {
         final Set<Integer> expected = new HashSet<>();
-        for (Recipe recipe : HerbloreRecipes.all()) {
+        for (Recipe recipe : Recipes.all()) {
             expected.add(recipe.getPrimary().getItemId());
             expected.add(recipe.getOutput().getItemId());
         }
@@ -36,7 +36,7 @@ public class RecipeDependencyResolverTest {
     public void everyRecipeHasItsPrimaryBeforeItsOutput() {
         final List<Integer> order = RecipeDependencyResolver.order();
 
-        for (Recipe recipe : HerbloreRecipes.all()) {
+        for (Recipe recipe : Recipes.all()) {
             final int primary = order.indexOf(recipe.getPrimary().getItemId());
             final int output = order.indexOf(recipe.getOutput().getItemId());
 

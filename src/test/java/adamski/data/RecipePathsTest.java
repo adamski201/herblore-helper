@@ -19,7 +19,7 @@ public class RecipePathsTest {
     public void everyProducedItemHasAPath() {
         final Set<Integer> missing = new LinkedHashSet<>();
 
-        for (Recipe recipe : HerbloreRecipes.all()) {
+        for (Recipe recipe : Recipes.all()) {
             for (int itemId : new int[]{recipe.getPrimary().getItemId(), recipe.getOutput().getItemId()}) {
                 if (RecipePaths.pathOf(itemId) == RecipePaths.NO_PATH) missing.add(itemId);
             }

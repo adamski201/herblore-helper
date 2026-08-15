@@ -1,6 +1,6 @@
 package adamski.infrastructure;
 
-import adamski.data.HerbloreRecipes;
+import adamski.data.Recipes;
 import adamski.data.PotionDoses;
 import net.runelite.api.Client;
 import net.runelite.api.EnumComposition;
@@ -92,7 +92,7 @@ public class PotionStorageAdapter {
                 final int canonicalId = PotionDoses.canonicalId(potion.getIntValue(1));
 
                 // Filter for domain-relevant item IDs
-                if (!HerbloreRecipes.isRelevantItem(canonicalId)) continue;
+                if (!Recipes.isRelevantItem(canonicalId)) continue;
 
                 doses.merge(canonicalId, stored, Integer::sum);
             }

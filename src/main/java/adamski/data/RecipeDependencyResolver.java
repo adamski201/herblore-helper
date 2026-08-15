@@ -28,7 +28,7 @@ public final class RecipeDependencyResolver {
         final Map<Integer, Set<Integer>> successors = new HashMap<>();
         final Map<Integer, Integer> inDegree = new HashMap<>();
 
-        for (Recipe recipe : HerbloreRecipes.all()) {
+        for (Recipe recipe : Recipes.all()) {
             final int primary = recipe.getPrimary().getItemId();
             final int output = recipe.getOutput().getItemId();
 

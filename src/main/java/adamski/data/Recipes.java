@@ -11,7 +11,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public final class HerbloreRecipes {
+public final class Recipes {
     private static final Ingredient[] NONE = new Ingredient[0];
 
     // Placeholder values - overridden by user config
@@ -278,10 +278,10 @@ public final class HerbloreRecipes {
      * Every item id any recipe mentions - primaries, secondaries, outputs
      */
     private static final Set<Integer> RELEVANT_ITEM_IDS = RECIPES.stream()
-            .flatMap(HerbloreRecipes::getItemIdsForRecipe)
+            .flatMap(Recipes::getItemIdsForRecipe)
             .collect(Collectors.toSet());
 
-    private HerbloreRecipes() {
+    private Recipes() {
     }
 
     public static List<Recipe> all() {

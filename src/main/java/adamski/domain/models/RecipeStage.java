@@ -7,23 +7,28 @@ import lombok.ToString;
 import java.util.List;
 
 /**
- * One banked item's contribution to a path. Holding ranarr seeds, grimy ranarr and ranarr unf gives
- * the ranarr path three stages.
+ * What one item contributes after entering a path. Holding ranarr seeds, grimy ranarr and ranarr unf
+ * gives the ranarr path three stages.
  */
 @Getter
 @EqualsAndHashCode
 @ToString
 public final class RecipeStage {
-    private final int rootItemId;
+    private final int entryItemId;
 
     /**
-     * Only the runs belonging to this path - a chain crossing into another contributes a stage
-     * there too.
+     * How much entered, in 1-dose units.
      */
+    private final double quantity;
+
     private final List<RecipeRun> runs;
 
-    public RecipeStage(int rootItemId, List<RecipeRun> runs) {
-        this.rootItemId = rootItemId;
+    private final double xp;
+
+    public RecipeStage(int entryItemId, double quantity, List<RecipeRun> runs, double xp) {
+        this.entryItemId = entryItemId;
+        this.quantity = quantity;
         this.runs = List.copyOf(runs);
+        this.xp = xp;
     }
 }

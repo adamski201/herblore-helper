@@ -159,7 +159,7 @@ public final class RecipePaths {
         return Collections.unmodifiableSet(PATHS);
     }
 
-    public static Map<Integer, Integer> PathsByItem() {
+    public static Map<Integer, Integer> pathsByItem() {
         return Collections.unmodifiableMap(PATH_BY_ITEM);
     }
 

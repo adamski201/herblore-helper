@@ -17,9 +17,21 @@ public final class SecondaryBalanceCalculator {
 
     /**
      * @param yields how many times each recipe runs
-     * @param owned  quantities in 1-dose units, the same map the cascade was given
+     * @param owned  quantities in 1-dose units, keyed by item id
      */
     public static SecondaryBalance calculate(List<RecipeRun> yields, Map<Integer, Integer> owned) {
+        final Map<Integer, Double> demanded = demand(yields);
+        final Map<Integer, Double> net = new HashMap<>();
+
+        demanded.forEach((itemId, required) -> net.put(itemId, owned.getOrDefault(itemId, 0) - required));
+
+        return new SecondaryBalance(demanded, net);
+    }
+
+    /**
+     * @return how much of each secondary the runs consume, keyed by item id
+     */
+    public static Map<Integer, Double> demand(List<RecipeRun> yields) {
         final Map<Integer, Double> demanded = new HashMap<>();
 
         for (RecipeRun yield : yields) {
@@ -28,9 +40,6 @@ public final class SecondaryBalanceCalculator {
             }
         }
 
-        final Map<Integer, Double> net = new HashMap<>();
-        demanded.forEach((itemId, required) -> net.put(itemId, owned.getOrDefault(itemId, 0) - required));
-
-        return new SecondaryBalance(demanded, net);
+        return demanded;
     }
 }

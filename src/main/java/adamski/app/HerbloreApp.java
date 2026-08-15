@@ -1,24 +1,17 @@
 package adamski.app;
 
-import adamski.data.HerbloreRecipes;
-import adamski.data.RecipeDependencyResolver;
 import adamski.data.RecipePaths;
-import adamski.domain.calculators.BankedXpCalculator;
+import adamski.data.RecipeRoutes;
 import adamski.domain.calculators.RecipeGrouper;
 import adamski.domain.calculators.RecipeYieldCalculator;
 import adamski.domain.calculators.SecondaryBalanceCalculator;
-import adamski.domain.models.BankedXpResult;
 import adamski.domain.models.ItemSource;
 import adamski.domain.models.Recipe;
-import adamski.domain.models.RecipeGroup;
-import adamski.domain.models.RecipeRun;
-import adamski.domain.models.SecondaryBalance;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -35,42 +28,23 @@ import java.util.stream.Collectors;
 @Slf4j
 @Singleton
 public class HerbloreApp {
-    private static final Set<ItemSource> COUNTED_SOURCES =
+    private static final Set<ItemSource> SOURCES =
             EnumSet.of(ItemSource.Bank, ItemSource.PotionStorage, ItemSource.SeedVault);
 
     /**
-     * One recipe per primary item, in dependency order. First in table order wins until config
-     * lands.
+     * One recipe per primary item, in dependency order. Every path takes its default product until
+     * config lands.
      */
-    private static final List<Recipe> RECIPES;
+    static final List<Recipe> RECIPES = RecipeRoutes.select(RecipeRoutes.defaultTerminals());
 
-    static {
-        final Map<Integer, Recipe> selection = new HashMap<>();
-        for (Recipe recipe : HerbloreRecipes.all()) {
-            selection.putIfAbsent(recipe.getPrimary().getItemId(), recipe);
-        }
-
-        final List<Recipe> ordered = new ArrayList<>(selection.size());
-        for (Integer itemId : RecipeDependencyResolver.order()) {
-            final Recipe recipe = selection.get(itemId);
-            if (recipe != null) ordered.add(recipe);
-        }
-
-        RECIPES = Collections.unmodifiableList(ordered);
-    }
+    private static final Map<Integer, Integer> TERMINAL_BY_ITEM = RecipeRoutes.terminalByItem(RECIPES);
 
     private final List<HerbloreListener> listeners = new CopyOnWriteArrayList<>();
 
     private final HerbloreStore store;
 
     @Getter
-    private volatile BankedXpResult bankedXp;
-
-    @Getter
-    private volatile SecondaryBalance secondaryBalance;
-
-    @Getter
-    private volatile List<RecipeGroup> groups;
+    private volatile HerbloreResult result;
 
     @Inject
     public HerbloreApp(HerbloreStore store) {
@@ -89,43 +63,27 @@ public class HerbloreApp {
         final var delta = store.updateState(changed);
         if (delta.isEmpty()) return;
 
-        final var snapshot = store.getState();
-        final var owned = merge(snapshot);
+        final var ownedItems = mergeSources(store.getState());
 
-        final Map<Integer, List<RecipeRun>> byRoot = partition(owned);
+        final var recipeRunsByBankedItem = RecipeYieldCalculator.calculateByBankedItem(ownedItems, RECIPES);
 
-        final List<RecipeRun> yields = byRoot.values().stream()
+        final var yields = recipeRunsByBankedItem.values().stream()
                 .flatMap(List::stream)
                 .collect(Collectors.toList());
 
-        bankedXp = BankedXpCalculator.calculate(yields);
-        secondaryBalance = SecondaryBalanceCalculator.calculate(yields, owned);
-        groups = RecipeGrouper.group(byRoot, RecipePaths.PathsByItem(), RECIPES);
+        result = new HerbloreResult(
+                ownedItems,
+                RecipeGrouper.group(recipeRunsByBankedItem, RecipePaths.pathsByItem(), TERMINAL_BY_ITEM, RECIPES),
+                SecondaryBalanceCalculator.calculate(yields, ownedItems));
 
-        log.debug("sources changed: {}, banked xp: {}", delta.keySet(), bankedXp.getTotal());
-        publish(snapshot, delta, bankedXp, secondaryBalance);
+        log.debug("sources changed: {}, banked xp: {}", delta.keySet(), result.getTotalXp());
+        publishResult(result);
     }
 
-    /**
-     * One cascade run per owned item, so that runs stay attributable to what was banked.
-     */
-    private static Map<Integer, List<RecipeRun>> partition(Map<Integer, Integer> owned) {
-        final Map<Integer, List<RecipeRun>> byRoot = new HashMap<>();
-
-        owned.forEach((itemId, quantity) -> {
-            final List<RecipeRun> runs =
-                    RecipeYieldCalculator.calculate(Collections.singletonMap(itemId, quantity), RECIPES);
-
-            if (!runs.isEmpty()) byRoot.put(itemId, runs);
-        });
-
-        return byRoot;
-    }
-
-    private static Map<Integer, Integer> merge(Map<ItemSource, Map<Integer, Integer>> snapshot) {
+    private static Map<Integer, Integer> mergeSources(Map<ItemSource, Map<Integer, Integer>> snapshot) {
         final Map<Integer, Integer> merged = new HashMap<>();
 
-        for (ItemSource source : COUNTED_SOURCES) {
+        for (ItemSource source : SOURCES) {
             snapshot.getOrDefault(source, Collections.emptyMap())
                     .forEach((itemId, quantity) -> merged.merge(itemId, quantity, Integer::sum));
         }
@@ -133,13 +91,10 @@ public class HerbloreApp {
         return merged;
     }
 
-    private void publish(Map<ItemSource, Map<Integer, Integer>> snapshot,
-                         Map<ItemSource, Map<Integer, Integer>> delta,
-                         BankedXpResult bankedXp,
-                         SecondaryBalance secondaryBalance) {
+    private void publishResult(HerbloreResult result) {
         for (HerbloreListener listener : listeners) {
             try {
-                listener.onStateChanged(snapshot, delta, bankedXp, secondaryBalance);
+                listener.onResultChanged(result);
             } catch (Exception e) {
                 log.warn("listener {} threw", listener.getClass().getSimpleName(), e);
             }

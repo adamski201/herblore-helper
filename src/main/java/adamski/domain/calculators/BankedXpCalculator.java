@@ -15,7 +15,7 @@ public final class BankedXpCalculator {
     }
 
     /**
-     * @param yields how many times each recipe runs, from {@link RecipeYieldCalculator}
+     * @param yields how many times each recipe runs, from {@link RecipeYieldCalculator}.
      */
     public static BankedXpResult calculate(List<RecipeRun> yields) {
         final Map<Integer, Double> xpPerRecipe = new HashMap<>();
@@ -26,8 +26,6 @@ public final class BankedXpCalculator {
             if (xp == 0) continue;
 
             total += xp;
-
-            // Merged - one cascade per owned item means a recipe arrives once per root
             xpPerRecipe.merge(yield.getRecipe().getId(), xp, Double::sum);
         }
 

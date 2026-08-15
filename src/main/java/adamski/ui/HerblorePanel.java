@@ -1,10 +1,10 @@
 package adamski.ui;
 
 import adamski.app.HerbloreListener;
-import adamski.data.HerbloreRecipes;
-import adamski.domain.models.BankedXpResult;
-import adamski.domain.models.ItemSource;
-import adamski.domain.models.Recipe;
+import adamski.app.HerbloreResult;
+import adamski.domain.models.RecipeGroup;
+import adamski.domain.models.RecipeStage;
+import adamski.domain.models.RecipeStep;
 import adamski.domain.models.SecondaryBalance;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.PluginPanel;
@@ -12,13 +12,11 @@ import net.runelite.client.ui.PluginPanel;
 import javax.swing.*;
 import java.awt.*;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 public class HerblorePanel extends PluginPanel implements HerbloreListener {
-    private static final Map<Integer, Integer> PRIMARY_BY_RECIPE = HerbloreRecipes.all().stream()
-            .collect(Collectors.toMap(Recipe::getId, recipe -> recipe.getPrimary().getItemId()));
-
     private final ItemManager itemManager;
 
     private final JLabel status = new JLabel("No data yet");
@@ -40,13 +38,13 @@ public class HerblorePanel extends PluginPanel implements HerbloreListener {
     }
 
     @Override
-    public void onStateChanged(Map<ItemSource, Map<Integer, Integer>> snapshot,
-                               Map<ItemSource, Map<Integer, Integer>> delta,
-                               BankedXpResult bankedXp,
-                               SecondaryBalance secondaryBalance) {
+    public void onResultChanged(HerbloreResult result) {
         // Names resolve here - ItemManager cannot be touched from the EDT
-        final String text = formatItems(snapshot) + formatXp(bankedXp) + formatSecondaries(secondaryBalance);
-        final String total = String.format("Banked XP: %,.0f", bankedXp.getTotal());
+        final String text = formatPaths(result.getPaths())
+                + formatSecondaries(result.getSecondaryBalance())
+                + formatItems(result.getOwned());
+
+        final String total = String.format("Banked XP: %,.0f", result.getTotalXp());
 
         SwingUtilities.invokeLater(() -> {
             status.setText(total);
@@ -54,31 +52,30 @@ public class HerblorePanel extends PluginPanel implements HerbloreListener {
         });
     }
 
-    private String formatItems(Map<ItemSource, Map<Integer, Integer>> snapshot) {
-        final StringBuilder sb = new StringBuilder();
+    private String formatPaths(List<RecipeGroup> paths) {
+        final StringBuilder sb = new StringBuilder("XP by path\n");
 
-        snapshot.forEach((source, items) -> {
-            sb.append(source).append('\n');
+        paths.stream()
+                .filter(path -> path.getXp() > 0)
+                .sorted(Comparator.comparingDouble(RecipeGroup::getXp).reversed())
+                .forEach(path -> {
+                    sb.append(String.format("%7s  %s -> %s%n", abbreviate(path.getXp()),
+                            name(path.getEntryItemId()), name(path.getTerminalItemId())));
 
-            items.entrySet().stream()
-                    .collect(Collectors.toMap(e -> name(e.getKey()), Map.Entry::getValue, Integer::sum))
-                    .entrySet().stream()
-                    .sorted(Map.Entry.comparingByKey(Comparator.naturalOrder()))
-                    .forEach(e -> sb.append(String.format("%7s  %s%n", abbreviate(e.getValue()), e.getKey())));
+                    sb.append(String.format("%7s    %s%n", abbreviate(path.getOutputQuantity()), "made"));
 
-            sb.append('\n');
-        });
+                    sb.append("         by item\n");
+                    for (RecipeStage stage : path.getStages()) {
+                        if (stage.getXp() == 0) continue;
+                        sb.append(String.format("%7s    %s%n", abbreviate(stage.getXp()), name(stage.getEntryItemId())));
+                    }
 
-        return sb.toString();
-    }
-
-    private String formatXp(BankedXpResult bankedXp) {
-        final StringBuilder sb = new StringBuilder("XP by primary\n");
-
-        bankedXp.getXpPerRecipe().entrySet().stream()
-                .sorted(Map.Entry.<Integer, Double>comparingByValue().reversed())
-                .forEach(e -> sb.append(String.format("%7s  %s%n",
-                        abbreviate(e.getValue()), name(PRIMARY_BY_RECIPE.get(e.getKey())))));
+                    sb.append("         by step\n");
+                    for (RecipeStep step : path.getSteps()) {
+                        sb.append(String.format("%7s    %s%n", abbreviate(step.getXp()),
+                                name(step.getRecipe().getOutput().getItemId())));
+                    }
+                });
 
         return sb.toString();
     }
@@ -91,6 +88,18 @@ public class HerblorePanel extends PluginPanel implements HerbloreListener {
         balance.getNet().entrySet().stream()
                 .sorted(Map.Entry.comparingByValue())
                 .forEach(e -> sb.append(String.format("%7s  %s%n", abbreviate(e.getValue()), name(e.getKey()))));
+
+        return sb.toString();
+    }
+
+    private String formatItems(Map<Integer, Integer> owned) {
+        final StringBuilder sb = new StringBuilder("\nBanked\n");
+
+        owned.entrySet().stream()
+                .collect(Collectors.toMap(e -> name(e.getKey()), Map.Entry::getValue, Integer::sum))
+                .entrySet().stream()
+                .sorted(Map.Entry.comparingByKey(Comparator.naturalOrder()))
+                .forEach(e -> sb.append(String.format("%7s  %s%n", abbreviate(e.getValue()), e.getKey())));
 
         return sb.toString();
     }

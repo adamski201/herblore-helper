@@ -11,20 +11,20 @@ public class HerbloreRecipesTest {
     @Test
     public void relevantItemsCoversEveryRole() {
         // primary, output and secondary respectively
-        assertTrue(HerbloreRecipes.isRelevantItem(ItemID.UNIDENTIFIED_RANARR));
-        assertTrue(HerbloreRecipes.isRelevantItem(ItemID.RANARRVIAL));
-        assertTrue(HerbloreRecipes.isRelevantItem(ItemID.SNAPE_GRASS));
+        assertTrue(Recipes.isRelevantItem(ItemID.UNIDENTIFIED_RANARR));
+        assertTrue(Recipes.isRelevantItem(ItemID.RANARRVIAL));
+        assertTrue(Recipes.isRelevantItem(ItemID.SNAPE_GRASS));
     }
 
     @Test
     public void relevantItemsAreOneDoseOnly() {
-        assertTrue(HerbloreRecipes.isRelevantItem(ItemID._1DOSE2ATTACK));
-        assertFalse(HerbloreRecipes.isRelevantItem(ItemID._4DOSE2ATTACK));
+        assertTrue(Recipes.isRelevantItem(ItemID._1DOSE2ATTACK));
+        assertFalse(Recipes.isRelevantItem(ItemID._4DOSE2ATTACK));
     }
 
     @Test
     public void unrelatedItemsAreFiltered() {
-        assertFalse(HerbloreRecipes.isRelevantItem(ItemID.COINS));
-        assertFalse(HerbloreRecipes.isRelevantItem(ItemID.ABYSSAL_WHIP));
+        assertFalse(Recipes.isRelevantItem(ItemID.COINS));
+        assertFalse(Recipes.isRelevantItem(ItemID.ABYSSAL_WHIP));
     }
 }
