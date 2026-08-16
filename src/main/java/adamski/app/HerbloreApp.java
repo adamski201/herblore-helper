@@ -1,10 +1,10 @@
 package adamski.app;
 
 import adamski.data.Recipes;
-import adamski.domain.calculators.RecipeGrouper;
+import adamski.domain.calculators.ChainPlanner;
 import adamski.domain.calculators.RecipeGraph;
+import adamski.domain.calculators.RecipeGrouper;
 import adamski.domain.calculators.RecipeYieldCalculator;
-import adamski.domain.calculators.RowPlanner;
 import adamski.domain.calculators.SecondaryBalanceCalculator;
 import adamski.domain.models.ItemQuantities;
 import adamski.domain.models.ItemSource;
@@ -32,15 +32,15 @@ public class HerbloreApp {
             EnumSet.of(ItemSource.Bank, ItemSource.PotionStorage, ItemSource.SeedVault);
 
     /**
-     * The chosen product per row, keyed by the row's entry item. Empty until config lands, so every
-     * row takes its default.
+     * The chosen product per chain, keyed by the chain's root item. Empty until config lands, so
+     * every chain takes its default.
      */
     private final Map<Integer, Integer> productByItem = new HashMap<>();
 
     private final List<HerbloreListener> listeners = new CopyOnWriteArrayList<>();
 
     private final HerbloreStore store;
-    private final RecipeGraph graph;
+    private final ChainPlanner planner;
 
     @Getter
     private volatile HerbloreResult result;
@@ -48,7 +48,7 @@ public class HerbloreApp {
     @Inject
     public HerbloreApp(HerbloreStore store) {
         this.store = store;
-        this.graph = new RecipeGraph(Recipes.all());
+        this.planner = new ChainPlanner(new RecipeGraph(Recipes.all()));
     }
 
     public void addListener(HerbloreListener listener) {
@@ -66,10 +66,10 @@ public class HerbloreApp {
         // Gather all owned items across item sources e.g. bank, seed vault
         final var ownedItems = mergeSources(store.getState());
 
-        final var rows = RowPlanner.plan(ownedItems, productByItem, graph);
-        final var selection = RowPlanner.select(rows, graph);
+        // Determine which recipe chains will be used (based on product selection)
+        final var plan = planner.plan(ownedItems, productByItem);
 
-        final var recipeRunsByBankedItem = RecipeYieldCalculator.calculateByBankedItem(ownedItems, selection);
+        final var recipeRunsByBankedItem = RecipeYieldCalculator.calculateByBankedItem(ownedItems, plan.getSelection());
 
         final var yields = recipeRunsByBankedItem.values().stream()
                 .flatMap(List::stream)
@@ -77,7 +77,7 @@ public class HerbloreApp {
 
         result = new HerbloreResult(
                 ownedItems,
-                RecipeGrouper.group(recipeRunsByBankedItem, rows, ownedItems),
+                RecipeGrouper.group(recipeRunsByBankedItem, plan.getChains(), ownedItems),
                 SecondaryBalanceCalculator.calculate(yields, ownedItems));
 
         log.debug("sources changed: {}, banked xp: {}", delta.keySet(), result.getTotalXp());

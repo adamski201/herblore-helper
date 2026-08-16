@@ -4,7 +4,7 @@ import adamski.domain.models.BankedXpResult;
 import adamski.domain.models.ItemQuantities;
 import adamski.domain.models.Recipe;
 import adamski.domain.models.RecipeGroup;
-import adamski.domain.models.RecipeRow;
+import adamski.domain.models.RecipeChain;
 import adamski.domain.models.RecipeRun;
 import adamski.domain.models.RecipeStage;
 import adamski.domain.models.RecipeStep;
@@ -17,10 +17,10 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Turns the runs into one result per planned row.
+ * Turns the runs into one result per planned chain.
  * <p>
- * A run belongs to the row whose route contains its recipe. Routes never overlap, because two rows
- * only exist when one cannot reach the other's product.
+ * A run belongs to the chain that contains its recipe. Chains never overlap, because a second chain
+ * only exists when its root cannot reach the first one's product.
  */
 public final class RecipeGrouper {
     private RecipeGrouper() {
@@ -28,51 +28,51 @@ public final class RecipeGrouper {
 
     /**
      * @param byBankedItem one run list per item the player holds
-     * @param rows         the planned rows, in the order they should be shown
+     * @param chains       the planned chains, in the order they should be shown
      * @param owned        what the player holds, for the quantity entering each stage
      */
     public static List<RecipeGroup> group(Map<Integer, List<RecipeRun>> byBankedItem,
-                                          List<RecipeRow> rows,
+                                          List<RecipeChain> chains,
                                           ItemQuantities owned) {
-        final Map<Integer, Integer> rowOfRecipe = new HashMap<>();
-        for (int i = 0; i < rows.size(); i++) {
-            for (Recipe recipe : rows.get(i).getRoute()) {
-                rowOfRecipe.put(recipe.getId(), i);
+        final Map<Integer, Integer> chainOfRecipe = new HashMap<>();
+        for (int i = 0; i < chains.size(); i++) {
+            for (Recipe recipe : chains.get(i).getRecipes()) {
+                chainOfRecipe.put(recipe.getId(), i);
             }
         }
 
-        final Map<Integer, Map<Integer, List<RecipeRun>>> runsByRowByBankedItem = new HashMap<>();
+        final Map<Integer, Map<Integer, List<RecipeRun>>> runsByChainByBankedItem = new HashMap<>();
 
         byBankedItem.forEach((bankedItemId, runs) -> {
             for (RecipeRun run : runs) {
-                final Integer row = rowOfRecipe.get(run.getRecipe().getId());
-                if (row == null) continue;
+                final Integer chain = chainOfRecipe.get(run.getRecipe().getId());
+                if (chain == null) continue;
 
-                runsByRowByBankedItem
-                        .computeIfAbsent(row, k -> new HashMap<>())
+                runsByChainByBankedItem
+                        .computeIfAbsent(chain, k -> new HashMap<>())
                         .computeIfAbsent(bankedItemId, k -> new ArrayList<>())
                         .add(run);
             }
         });
 
-        final List<RecipeGroup> groups = new ArrayList<>(rows.size());
+        final List<RecipeGroup> groups = new ArrayList<>(chains.size());
 
-        for (int i = 0; i < rows.size(); i++) {
-            final Map<Integer, List<RecipeRun>> byBanked = runsByRowByBankedItem.get(i);
+        for (int i = 0; i < chains.size(); i++) {
+            final Map<Integer, List<RecipeRun>> byBanked = runsByChainByBankedItem.get(i);
             if (byBanked == null) continue;
 
-            groups.add(build(rows.get(i), byBanked, owned));
+            groups.add(build(chains.get(i), byBanked, owned));
         }
 
         return groups;
     }
 
-    private static RecipeGroup build(RecipeRow row,
+    private static RecipeGroup build(RecipeChain chain,
                                      Map<Integer, List<RecipeRun>> byBankedItem,
                                      ItemQuantities owned) {
         final Map<Recipe, Integer> position = new HashMap<>();
-        for (int i = 0; i < row.getRoute().size(); i++) {
-            position.put(row.getRoute().get(i), i);
+        for (int i = 0; i < chain.getRecipes().size(); i++) {
+            position.put(chain.getRecipes().get(i), i);
         }
 
         final List<RecipeStage> stages = byBankedItem.entrySet().stream()
@@ -90,11 +90,11 @@ public final class RecipeGrouper {
         final BankedXpResult whole = BankedXpCalculator.calculate(allRuns);
 
         return new RecipeGroup(
-                row.getEntryItemId(),
-                row.getProductItemId(),
+                chain.getRootItemId(),
+                chain.getProductItemId(),
                 stages,
                 steps(whole, position),
-                produced(allRuns, row.getProductItemId()),
+                produced(allRuns, chain.getProductItemId()),
                 SecondaryBalanceCalculator.demand(allRuns),
                 whole.getTotal());
     }

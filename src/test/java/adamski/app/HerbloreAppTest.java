@@ -2,9 +2,10 @@ package adamski.app;
 
 import adamski.data.Recipes;
 import adamski.domain.calculators.BankedXpCalculator;
+import adamski.domain.calculators.ChainPlanner;
 import adamski.domain.calculators.RecipeGraph;
-import adamski.domain.calculators.RowPlanner;
 import adamski.domain.calculators.RecipeYieldCalculator;
+import adamski.domain.models.ChainPlan;
 import adamski.domain.models.ItemQuantities;
 import adamski.domain.models.ItemSource;
 import adamski.domain.models.RecipeGroup;
@@ -179,10 +180,11 @@ public class HerbloreAppTest {
         bank.put(ItemID.HARRALANDER_SEED, 3);
 
         // The total is the sum of the paths, so grouping is checked against the ungrouped runs
+        final ChainPlan plan = new ChainPlanner(GRAPH)
+                .plan(ItemQuantities.counted(bank), java.util.Collections.emptyMap());
+
         final List<RecipeRun> ungrouped = RecipeYieldCalculator
-                .calculateByBankedItem(ItemQuantities.counted(bank), RowPlanner.select(
-                        RowPlanner.plan(ItemQuantities.counted(bank), java.util.Collections.emptyMap(),
-                                GRAPH), GRAPH)).values().stream()
+                .calculateByBankedItem(ItemQuantities.counted(bank), plan.getSelection()).values().stream()
                 .flatMap(List::stream)
                 .collect(Collectors.toList());
 

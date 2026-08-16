@@ -1,9 +1,10 @@
 package adamski.domain.calculators;
 
+import adamski.domain.models.ChainPlan;
 import adamski.domain.models.Ingredient;
 import adamski.domain.models.ItemQuantities;
 import adamski.domain.models.Recipe;
-import adamski.domain.models.RecipeRow;
+import adamski.domain.models.RecipeChain;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -21,82 +22,80 @@ import static org.junit.Assert.assertTrue;
 /**
  * Synthetic recipes: 1 -> 2 -> 3 -> 4, with 3 also able to make 5, and a stranded 6 -> 7.
  */
-public class RowPlannerTest {
+public class ChainPlannerTest {
     private static final Recipe ONE_TO_TWO = recipe(10, 1, 2);
     private static final Recipe TWO_TO_THREE = recipe(11, 2, 3);
     private static final Recipe THREE_TO_FOUR = recipe(12, 3, 4);
     private static final Recipe THREE_TO_FIVE = recipe(13, 3, 5);
     private static final Recipe SIX_TO_SEVEN = recipe(14, 6, 7);
 
-    private static final RecipeGraph GRAPH = new RecipeGraph(
-            Arrays.asList(ONE_TO_TWO, TWO_TO_THREE, THREE_TO_FOUR, THREE_TO_FIVE, SIX_TO_SEVEN));
+    private static final ChainPlanner PLANNER = new ChainPlanner(new RecipeGraph(
+            Arrays.asList(ONE_TO_TWO, TWO_TO_THREE, THREE_TO_FOUR, THREE_TO_FIVE, SIX_TO_SEVEN)));
 
     @Test
-    public void oneBankedItemIsOneRow() {
-        final List<RecipeRow> rows = plan(owned(1, 10));
+    public void oneBankedItemIsOneChain() {
+        final List<RecipeChain> chains = plan(owned(1, 10)).getChains();
 
-        assertEquals(1, rows.size());
-        assertEquals(1, rows.get(0).getEntryItemId());
-        assertEquals(4, rows.get(0).getProductItemId()); // first option all the way down
+        assertEquals(1, chains.size());
+        assertEquals(1, chains.get(0).getRootItemId());
+        assertEquals(4, chains.get(0).getProductItemId()); // first option all the way down
     }
 
     @Test
-    public void anythingOnTheRouteJoinsTheSameRow() {
-        final List<RecipeRow> rows = plan(owned(1, 10, 2, 5, 3, 8));
+    public void anythingAlongTheChainJoinsIt() {
+        final List<RecipeChain> chains = plan(owned(1, 10, 2, 5, 3, 8)).getChains();
 
-        assertEquals(1, rows.size());
-        assertEquals(1, rows.get(0).getEntryItemId());
+        assertEquals(1, chains.size());
+        assertEquals(1, chains.get(0).getRootItemId());
     }
 
     @Test
-    public void theLeastMatureItemNamesTheRow() {
-        final List<RecipeRow> rows = plan(owned(3, 8, 1, 10));
-
-        assertEquals(1, rows.get(0).getEntryItemId());
+    public void theLeastMatureItemRootsTheChain() {
+        assertEquals(1, plan(owned(3, 8, 1, 10)).getChains().get(0).getRootItemId());
     }
 
     @Test
-    public void anItemThatCannotReachTheProductStartsItsOwnRow() {
-        final List<RecipeRow> rows = plan(owned(1, 10, 6, 4));
+    public void anItemThatCannotReachTheProductRootsItsOwnChain() {
+        final List<RecipeChain> chains = plan(owned(1, 10, 6, 4)).getChains();
 
-        assertEquals(2, rows.size());
-        assertEquals(List.of(1, 6), rows.stream()
-                .map(RecipeRow::getEntryItemId)
+        assertEquals(2, chains.size());
+        assertEquals(List.of(1, 6), chains.stream()
+                .map(RecipeChain::getRootItemId)
                 .collect(Collectors.toList()));
     }
 
     @Test
-    public void anItemDownstreamOfTheChosenProductStrandsIntoItsOwnRow() {
+    public void anItemDownstreamOfTheChosenProductStrandsIntoItsOwnChain() {
         final Map<Integer, Integer> chosen = new HashMap<>();
         chosen.put(1, 2); // stop at item 2
 
-        final List<RecipeRow> rows = RowPlanner.plan(owned(1, 10, 3, 5), chosen, GRAPH);
+        final List<RecipeChain> chains = PLANNER.plan(owned(1, 10, 3, 5), chosen).getChains();
 
-        assertEquals(2, rows.size());
-        assertEquals(2, rows.get(0).getProductItemId());
-        assertEquals(3, rows.get(1).getEntryItemId());
+        assertEquals(2, chains.size());
+        assertEquals(2, chains.get(0).getProductItemId());
+        assertEquals(3, chains.get(1).getRootItemId());
     }
 
     @Test
-    public void anItemThatMakesNothingIsNoRow() {
-        assertTrue(plan(owned(4, 100)).isEmpty());
+    public void anItemThatMakesNothingIsNoChain() {
+        assertTrue(plan(owned(4, 100)).getChains().isEmpty());
     }
 
     @Test
-    public void choosingTheProductChoosesTheRoute() {
+    public void choosingTheProductChoosesTheChain() {
         final Map<Integer, Integer> chosen = new HashMap<>();
         chosen.put(1, 5);
 
-        final List<RecipeRow> rows = RowPlanner.plan(owned(1, 10), chosen, GRAPH);
+        final ChainPlan plan = PLANNER.plan(owned(1, 10), chosen);
 
-        assertEquals(List.of(10, 11, 13), rows.get(0).getRoute().stream()
+        assertEquals(List.of(10, 11, 13), plan.getChains().get(0).getRecipes().stream()
                 .map(Recipe::getId)
                 .collect(Collectors.toList()));
     }
 
     @Test
-    public void theSelectionIsEveryRowsRoute() {
-        final List<Recipe> selection = RowPlanner.select(plan(owned(1, 10, 6, 4)), GRAPH);
+    public void theSelectionIsEveryChainsRecipes() {
+        final List<Recipe> selection = plan(owned(1, 10, 6, 4)).getSelection();
 
         assertEquals(Set.of(10, 11, 12, 14), selection.stream()
                 .map(Recipe::getId)
@@ -105,7 +104,7 @@ public class RowPlannerTest {
 
     @Test
     public void theSelectionRunsProducersBeforeConsumers() {
-        final List<Recipe> selection = RowPlanner.select(plan(owned(1, 10, 6, 4)), GRAPH);
+        final List<Recipe> selection = plan(owned(1, 10, 6, 4)).getSelection();
 
         for (int earlier = 0; earlier < selection.size(); earlier++) {
             for (int later = earlier + 1; later < selection.size(); later++) {
@@ -118,7 +117,7 @@ public class RowPlannerTest {
 
     @Test
     public void noPrimaryIsClaimedTwice() {
-        final List<Recipe> selection = RowPlanner.select(plan(owned(1, 10, 2, 5, 3, 8)), GRAPH);
+        final List<Recipe> selection = plan(owned(1, 10, 2, 5, 3, 8)).getSelection();
 
         assertEquals(selection.size(), selection.stream()
                 .map(recipe -> recipe.getPrimary().getItemId())
@@ -126,8 +125,8 @@ public class RowPlannerTest {
                 .count());
     }
 
-    private static List<RecipeRow> plan(ItemQuantities owned) {
-        return RowPlanner.plan(owned, Collections.emptyMap(), GRAPH);
+    private static ChainPlan plan(ItemQuantities owned) {
+        return PLANNER.plan(owned, Collections.emptyMap());
     }
 
     private static ItemQuantities owned(int... pairs) {

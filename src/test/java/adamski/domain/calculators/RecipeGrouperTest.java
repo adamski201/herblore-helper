@@ -4,7 +4,7 @@ import adamski.domain.models.Ingredient;
 import adamski.domain.models.ItemQuantities;
 import adamski.domain.models.Recipe;
 import adamski.domain.models.RecipeGroup;
-import adamski.domain.models.RecipeRow;
+import adamski.domain.models.RecipeChain;
 import adamski.domain.models.RecipeRun;
 import adamski.domain.models.RecipeStage;
 import adamski.domain.models.RecipeStep;
@@ -21,7 +21,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Synthetic recipes: 1 -> 2 -> 3 -> 4 is one row, and a stranded 6 -> 7 is another.
+ * Synthetic recipes: 1 -> 2 -> 3 -> 4 is one chain, and a stranded 6 -> 7 is another.
  */
 public class RecipeGrouperTest {
     private static final Recipe ONE_TO_TWO = recipe(10, 1, 2);
@@ -29,14 +29,14 @@ public class RecipeGrouperTest {
     private static final Recipe THREE_TO_FOUR = recipe(12, 3, 4);
     private static final Recipe SIX_TO_SEVEN = recipe(14, 6, 7);
 
-    private static final RecipeRow ROW_A =
-            new RecipeRow(1, 4, Arrays.asList(ONE_TO_TWO, TWO_TO_THREE, THREE_TO_FOUR));
-    private static final RecipeRow ROW_B =
-            new RecipeRow(6, 7, Collections.singletonList(SIX_TO_SEVEN));
+    private static final RecipeChain CHAIN_A =
+            new RecipeChain(Arrays.asList(ONE_TO_TWO, TWO_TO_THREE, THREE_TO_FOUR));
+    private static final RecipeChain CHAIN_B =
+            new RecipeChain(Collections.singletonList(SIX_TO_SEVEN));
 
     @Test
     public void nothingBankedIsNoGroups() {
-        assertTrue(RecipeGrouper.group(Collections.emptyMap(), List.of(ROW_A), ItemQuantities.EMPTY).isEmpty());
+        assertTrue(RecipeGrouper.group(Collections.emptyMap(), List.of(CHAIN_A), ItemQuantities.EMPTY).isEmpty());
     }
 
     @Test
@@ -75,13 +75,13 @@ public class RecipeGrouperTest {
     }
 
     @Test
-    public void aRunBelongingToNoRowIsDropped() {
+    public void aRunBelongingToNoChainIsDropped() {
         final Recipe orphan = recipe(99, 8, 9);
 
         final Map<Integer, List<RecipeRun>> byBankedItem = new HashMap<>();
         byBankedItem.put(8, Collections.singletonList(run(orphan, 1)));
 
-        assertTrue(RecipeGrouper.group(byBankedItem, List.of(ROW_A, ROW_B), owned(8, 1)).isEmpty());
+        assertTrue(RecipeGrouper.group(byBankedItem, List.of(CHAIN_A, CHAIN_B), owned(8, 1)).isEmpty());
     }
 
     @Test
@@ -133,12 +133,12 @@ public class RecipeGrouperTest {
         final Recipe freeStep = new Recipe(11, new Ingredient(2, 1), new Ingredient[0],
                 new Ingredient(3, 1), "test", 0f, 0);
 
-        final RecipeRow row = new RecipeRow(2, 4, Arrays.asList(freeStep, THREE_TO_FOUR));
+        final RecipeChain chain = new RecipeChain(Arrays.asList(freeStep, THREE_TO_FOUR));
 
         final Map<Integer, List<RecipeRun>> byBankedItem = new HashMap<>();
         byBankedItem.put(2, Arrays.asList(run(freeStep, 4), run(THREE_TO_FOUR, 4)));
 
-        final List<RecipeGroup> groups = RecipeGrouper.group(byBankedItem, List.of(row), owned(2, 4));
+        final List<RecipeGroup> groups = RecipeGrouper.group(byBankedItem, List.of(chain), owned(2, 4));
 
         assertEquals(List.of(12), groups.get(0).getSteps().stream()
                 .map(step -> step.getRecipe().getId())
@@ -150,12 +150,12 @@ public class RecipeGrouperTest {
         final Recipe threeToFourTriples = new Recipe(12, new Ingredient(3, 1), new Ingredient[0],
                 new Ingredient(4, 3), "test", 1f, 0);
 
-        final RecipeRow row = new RecipeRow(3, 4, Collections.singletonList(threeToFourTriples));
+        final RecipeChain chain = new RecipeChain(Collections.singletonList(threeToFourTriples));
 
         final Map<Integer, List<RecipeRun>> byBankedItem = new HashMap<>();
         byBankedItem.put(3, Collections.singletonList(run(threeToFourTriples, 5)));
 
-        final List<RecipeGroup> groups = RecipeGrouper.group(byBankedItem, List.of(row), owned(3, 5));
+        final List<RecipeGroup> groups = RecipeGrouper.group(byBankedItem, List.of(chain), owned(3, 5));
 
         assertEquals(15.0, groups.get(0).getOutputQuantity(), 0.0001);
     }
@@ -165,12 +165,12 @@ public class RecipeGrouperTest {
         final Recipe needsTwoOfItem50 = new Recipe(12, new Ingredient(3, 1),
                 new Ingredient[]{new Ingredient(50, 2)}, new Ingredient(4, 1), "test", 1f, 0);
 
-        final RecipeRow row = new RecipeRow(3, 4, Collections.singletonList(needsTwoOfItem50));
+        final RecipeChain chain = new RecipeChain(Collections.singletonList(needsTwoOfItem50));
 
         final Map<Integer, List<RecipeRun>> byBankedItem = new HashMap<>();
         byBankedItem.put(3, Arrays.asList(run(needsTwoOfItem50, 4), run(SIX_TO_SEVEN, 4)));
 
-        final List<RecipeGroup> groups = RecipeGrouper.group(byBankedItem, List.of(row), owned(3, 4));
+        final List<RecipeGroup> groups = RecipeGrouper.group(byBankedItem, List.of(chain), owned(3, 4));
 
         assertEquals(1, groups.size());
         assertEquals(8.0, groups.get(0).getSecondaryDemand().get(50), 0.0001);
@@ -183,7 +183,7 @@ public class RecipeGrouperTest {
             byBankedItem.put(entry.getKey(), entry.getValue());
         }
 
-        return RecipeGrouper.group(byBankedItem, List.of(ROW_A, ROW_B), owned);
+        return RecipeGrouper.group(byBankedItem, List.of(CHAIN_A, CHAIN_B), owned);
     }
 
     private static Map.Entry<Integer, List<RecipeRun>> banked(int itemId, RecipeRun... runs) {
