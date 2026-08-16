@@ -1,7 +1,9 @@
 package adamski.app;
 
-import adamski.data.RecipePaths;
+import adamski.data.Recipes;
 import adamski.domain.calculators.BankedXpCalculator;
+import adamski.domain.calculators.RecipeGraph;
+import adamski.domain.calculators.RowPlanner;
 import adamski.domain.calculators.RecipeYieldCalculator;
 import adamski.domain.models.ItemQuantities;
 import adamski.domain.models.ItemSource;
@@ -32,6 +34,8 @@ import static org.junit.Assert.assertTrue;
  */
 public class HerbloreAppTest {
     private static final double DELTA = 0.0001;
+
+    private static final RecipeGraph GRAPH = new RecipeGraph(Recipes.all());
 
     /**
      * r5 degrime 7.5, r20 unf 0, r44 defence potion 75. Terminal - caviar mixes run off caviar.
@@ -176,7 +180,9 @@ public class HerbloreAppTest {
 
         // The total is the sum of the paths, so grouping is checked against the ungrouped runs
         final List<RecipeRun> ungrouped = RecipeYieldCalculator
-                .calculateByBankedItem(ItemQuantities.counted(bank), HerbloreApp.RECIPES).values().stream()
+                .calculateByBankedItem(ItemQuantities.counted(bank), RowPlanner.select(
+                        RowPlanner.plan(ItemQuantities.counted(bank), java.util.Collections.emptyMap(),
+                                GRAPH), GRAPH)).values().stream()
                 .flatMap(List::stream)
                 .collect(Collectors.toList());
 
@@ -184,17 +190,14 @@ public class HerbloreAppTest {
     }
 
     @Test
-    public void everyMaturityOfAHerbIsAStageOnOnePath() {
+    public void everyMaturityOfAHerbIsAStageOnOneRow() {
         final Map<Integer, Integer> bank = items(ItemID.RANARR_SEED, 2);
         bank.put(ItemID.UNIDENTIFIED_RANARR, 40);
         bank.put(ItemID.RANARRVIAL, 25);
 
         app.sourcesUpdated(source(ItemSource.Bank, bank));
 
-        final RecipeGroup ranarr = app.getResult().getPaths().stream()
-                .filter(group -> group.getPathItemId() == RecipePaths.pathOf(ItemID.RANARR_WEED))
-                .findFirst()
-                .orElseThrow(AssertionError::new);
+        final RecipeGroup ranarr = app.getResult().getPaths().get(0);
 
         assertEquals(Arrays.asList(ItemID.RANARR_SEED, ItemID.UNIDENTIFIED_RANARR, ItemID.RANARRVIAL),
                 ranarr.getStages().stream().map(RecipeStage::getEntryItemId).collect(Collectors.toList()));
@@ -208,7 +211,7 @@ public class HerbloreAppTest {
         app.sourcesUpdated(source(ItemSource.Bank, bank));
 
         final Map<Integer, Integer> entryByTerminal = app.getResult().getPaths().stream()
-                .collect(Collectors.toMap(RecipeGroup::getTerminalItemId, RecipeGroup::getEntryItemId));
+                .collect(Collectors.toMap(RecipeGroup::getProductItemId, RecipeGroup::getEntryItemId));
 
         assertEquals(Integer.valueOf(ItemID.CADANTINE), entryByTerminal.get(ItemID._1DOSE2DEFENSE));
         assertEquals(Integer.valueOf(ItemID.CADANTINE_BLOODVIAL), entryByTerminal.get(ItemID._1DOSEBASTION));
@@ -227,18 +230,27 @@ public class HerbloreAppTest {
     }
 
     @Test
-    public void caviarMixesAreTheirOwnPathNotTheHerbs() {
+    public void aChainIsOneRowEvenWhereItCrossesIntoAnotherPotion() {
+        // Harralander runs to stat restore and on into guthix balance - one plan, one row
+        app.sourcesUpdated(source(ItemSource.Bank, items(ItemID.UNIDENTIFIED_HARRALANDER, 20)));
+
+        assertEquals(1, app.getResult().getPaths().size());
+        assertEquals(ItemID.UNIDENTIFIED_HARRALANDER, app.getResult().getPaths().get(0).getEntryItemId());
+    }
+
+    @Test
+    public void caviarMixesAreTheirOwnRowNotTheHerbs() {
         final Map<Integer, Integer> bank = items(ItemID.UNIDENTIFIED_HARRALANDER, 20);
         bank.put(ItemID.BRUT_CAVIAR, 10);
 
         app.sourcesUpdated(source(ItemSource.Bank, bank));
 
-        final Set<Integer> paths = app.getResult().getPaths().stream()
-                .map(RecipeGroup::getPathItemId)
+        final Set<Integer> entries = app.getResult().getPaths().stream()
+                .map(RecipeGroup::getEntryItemId)
                 .collect(Collectors.toSet());
 
-        assertTrue(paths.contains(RecipePaths.pathOf(ItemID.HARRALANDER)));
-        assertTrue(paths.contains(RecipePaths.pathOf(ItemID.BRUT_CAVIAR)));
+        assertTrue(entries.contains(ItemID.UNIDENTIFIED_HARRALANDER));
+        assertTrue(entries.contains(ItemID.BRUT_CAVIAR));
     }
 
 

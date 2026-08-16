@@ -11,9 +11,9 @@ import java.util.Map;
 @ToString
 public final class BankedXpResult {
     private final double total;
-    private final Map<Integer, Double> xpPerRecipe;
+    private final Map<Recipe, Double> xpPerRecipe;
 
-    public BankedXpResult(double total, Map<Integer, Double> xpPerRecipe) {
+    public BankedXpResult(double total, Map<Recipe, Double> xpPerRecipe) {
         this.total = total;
         this.xpPerRecipe = Map.copyOf(xpPerRecipe);
     }

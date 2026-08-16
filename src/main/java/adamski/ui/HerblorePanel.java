@@ -61,7 +61,7 @@ public class HerblorePanel extends PluginPanel implements HerbloreListener {
                 .sorted(Comparator.comparingDouble(RecipeGroup::getXp).reversed())
                 .forEach(path -> {
                     sb.append(String.format("%7s  %s -> %s%n", abbreviate(path.getXp()),
-                            name(path.getEntryItemId()), name(path.getTerminalItemId())));
+                            name(RowLabels.nameFor(path.getEntryItemId())), name(path.getProductItemId())));
 
                     sb.append(String.format("%7s    %s%n", abbreviate(path.getOutputQuantity()), "made"));
 

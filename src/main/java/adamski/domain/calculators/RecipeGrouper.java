@@ -1,8 +1,10 @@
 package adamski.domain.calculators;
 
 import adamski.domain.models.BankedXpResult;
+import adamski.domain.models.ItemQuantities;
 import adamski.domain.models.Recipe;
 import adamski.domain.models.RecipeGroup;
+import adamski.domain.models.RecipeRow;
 import adamski.domain.models.RecipeRun;
 import adamski.domain.models.RecipeStage;
 import adamski.domain.models.RecipeStep;
@@ -15,158 +17,111 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Sorts recipe runs into one group per product.
+ * Turns the runs into one result per planned row.
  * <p>
- * A run belongs to the path of the item it <em>produces</em>, so one banked item's chain can cross
- * paths - harralander seeds make stat restore on the harralander path, then guthix balance on its own.
+ * A run belongs to the row whose route contains its recipe. Routes never overlap, because two rows
+ * only exist when one cannot reach the other's product.
  */
 public final class RecipeGrouper {
     private RecipeGrouper() {
     }
 
     /**
-     * @param byBankedItem   one run list per item the player holds
-     * @param pathByItem     item id to the representative item of its path
-     * @param terminalByItem item id to the product its path ends at
-     * @param orderedRecipes in dependency order, so a recipe's index in it is its maturity
-     * @return one group per product made, its stages least mature first and its steps in dependency order
+     * @param byBankedItem one run list per item the player holds
+     * @param rows         the planned rows, in the order they should be shown
+     * @param owned        what the player holds, for the quantity entering each stage
      */
     public static List<RecipeGroup> group(Map<Integer, List<RecipeRun>> byBankedItem,
-                                          Map<Integer, Integer> pathByItem,
-                                          Map<Integer, Integer> terminalByItem,
-                                          List<Recipe> orderedRecipes) {
-        final Map<Integer, Integer> position = new HashMap<>();
-        for (int i = 0; i < orderedRecipes.size(); i++) {
-            position.put(orderedRecipes.get(i).getId(), i);
+                                          List<RecipeRow> rows,
+                                          ItemQuantities owned) {
+        final Map<Integer, Integer> rowOfRecipe = new HashMap<>();
+        for (int i = 0; i < rows.size(); i++) {
+            for (Recipe recipe : rows.get(i).getRoute()) {
+                rowOfRecipe.put(recipe.getId(), i);
+            }
         }
 
-        final Map<Integer, Map<Integer, List<Segment>>> byTerminal = new HashMap<>();
+        final Map<Integer, Map<Integer, List<RecipeRun>>> runsByRowByBankedItem = new HashMap<>();
 
-        byBankedItem.values().stream()
-                .flatMap(runs -> segments(runs, terminalByItem).stream())
-                .forEach(segment -> byTerminal
-                        .computeIfAbsent(segment.terminal, k -> new HashMap<>())
-                        .computeIfAbsent(segment.entryItemId, k -> new ArrayList<>())
-                        .add(segment));
+        byBankedItem.forEach((bankedItemId, runs) -> {
+            for (RecipeRun run : runs) {
+                final Integer row = rowOfRecipe.get(run.getRecipe().getId());
+                if (row == null) continue;
 
-        final List<RecipeGroup> groups = new ArrayList<>(byTerminal.size());
-
-        byTerminal.forEach((terminal, byEntryItem) -> {
-            final List<RecipeStage> stages = byEntryItem.entrySet().stream()
-                    .sorted(Comparator
-                            .comparingInt((Map.Entry<Integer, List<Segment>> e) -> maturity(e.getValue(), position))
-                            .thenComparingInt(Map.Entry::getKey))
-                    .map(e -> stage(e.getKey(), e.getValue()))
-                    .collect(Collectors.toList());
-
-            final List<RecipeRun> allRuns = stages.stream()
-                    .flatMap(stage -> stage.getRuns().stream())
-                    .collect(Collectors.toList());
-
-            final BankedXpResult whole = BankedXpCalculator.calculate(allRuns);
-
-            groups.add(new RecipeGroup(
-                    pathByItem.get(terminal),
-                    terminal,
-                    stages,
-                    steps(whole, allRuns, position),
-                    produced(allRuns, terminal),
-                    SecondaryBalanceCalculator.demand(allRuns),
-                    whole.getTotal()));
+                runsByRowByBankedItem
+                        .computeIfAbsent(row, k -> new HashMap<>())
+                        .computeIfAbsent(bankedItemId, k -> new ArrayList<>())
+                        .add(run);
+            }
         });
 
-        groups.sort(Comparator
-                .comparingInt((RecipeGroup group) -> earliestRecipe(position, group))
-                .thenComparingInt(RecipeGroup::getTerminalItemId));
+        final List<RecipeGroup> groups = new ArrayList<>(rows.size());
+
+        for (int i = 0; i < rows.size(); i++) {
+            final Map<Integer, List<RecipeRun>> byBanked = runsByRowByBankedItem.get(i);
+            if (byBanked == null) continue;
+
+            groups.add(build(rows.get(i), byBanked, owned));
+        }
 
         return groups;
     }
 
-    /**
-     * Cuts one banked item's chain where it crosses from one product to the next.
-     */
-    private static List<Segment> segments(List<RecipeRun> runs, Map<Integer, Integer> terminalByItem) {
-        final List<Segment> segments = new ArrayList<>();
-        Segment current = null;
-
-        for (RecipeRun run : runs) {
-            // Guarded by RecipePathsTest - a dropped run would leave the total above the groups
-            final Integer produces = terminalByItem.get(run.getRecipe().getOutput().getItemId());
-            if (produces == null) continue;
-
-            if (current == null || current.terminal != produces) {
-                current = new Segment(produces, run);
-                segments.add(current);
-            }
-
-            current.runs.add(run);
+    private static RecipeGroup build(RecipeRow row,
+                                     Map<Integer, List<RecipeRun>> byBankedItem,
+                                     ItemQuantities owned) {
+        final Map<Recipe, Integer> position = new HashMap<>();
+        for (int i = 0; i < row.getRoute().size(); i++) {
+            position.put(row.getRoute().get(i), i);
         }
 
-        return segments;
-    }
-
-    private static RecipeStage stage(int entryItemId, List<Segment> segments) {
-        final List<RecipeRun> runs = segments.stream()
-                .flatMap(segment -> segment.runs.stream())
+        final List<RecipeStage> stages = byBankedItem.entrySet().stream()
+                .sorted(Comparator
+                        .comparingInt((Map.Entry<Integer, List<RecipeRun>> e) -> maturity(e.getValue(), position))
+                        .thenComparingInt(Map.Entry::getKey))
+                .map(e -> new RecipeStage(e.getKey(), owned.get(e.getKey()), e.getValue(),
+                        BankedXpCalculator.calculate(e.getValue()).getTotal()))
                 .collect(Collectors.toList());
 
-        final double quantity = segments.stream().mapToDouble(segment -> segment.quantity).sum();
+        final List<RecipeRun> allRuns = stages.stream()
+                .flatMap(stage -> stage.getRuns().stream())
+                .collect(Collectors.toList());
 
-        return new RecipeStage(entryItemId, quantity, runs, BankedXpCalculator.calculate(runs).getTotal());
+        final BankedXpResult whole = BankedXpCalculator.calculate(allRuns);
+
+        return new RecipeGroup(
+                row.getEntryItemId(),
+                row.getProductItemId(),
+                stages,
+                steps(whole, position),
+                produced(allRuns, row.getProductItemId()),
+                SecondaryBalanceCalculator.demand(allRuns),
+                whole.getTotal());
     }
 
-    private static int maturity(List<Segment> segments, Map<Integer, Integer> position) {
-        return segments.stream()
-                .mapToInt(segment -> positionOf(position, segment.runs.get(0)))
+    private static int maturity(List<RecipeRun> runs, Map<Recipe, Integer> position) {
+        return runs.stream()
+                .mapToInt(run -> position.getOrDefault(run.getRecipe(), Integer.MAX_VALUE))
                 .min()
                 .orElse(Integer.MAX_VALUE);
     }
 
-    private static List<RecipeStep> steps(BankedXpResult whole, List<RecipeRun> runs,
-                                          Map<Integer, Integer> position) {
-        final Map<Integer, Recipe> recipeById = runs.stream()
-                .collect(Collectors.toMap(run -> run.getRecipe().getId(), RecipeRun::getRecipe, (a, b) -> a));
-
+    private static List<RecipeStep> steps(BankedXpResult whole, Map<Recipe, Integer> position) {
         return whole.getXpPerRecipe().entrySet().stream()
                 .sorted(Comparator.comparingInt(e -> position.getOrDefault(e.getKey(), Integer.MAX_VALUE)))
-                .map(e -> new RecipeStep(recipeById.get(e.getKey()), e.getValue()))
+                .map(e -> new RecipeStep(e.getKey(), e.getValue()))
                 .collect(Collectors.toList());
     }
 
-    private static double produced(List<RecipeRun> runs, int terminal) {
+    private static double produced(List<RecipeRun> runs, int product) {
         double quantity = 0;
 
         for (RecipeRun run : runs) {
-            if (run.getRecipe().getOutput().getItemId() == terminal) {
+            if (run.getRecipe().getOutput().getItemId() == product) {
                 quantity += run.getRuns() * run.getRecipe().getOutput().getQuantity();
             }
         }
 
         return quantity;
-    }
-
-    private static int positionOf(Map<Integer, Integer> position, RecipeRun run) {
-        return position.getOrDefault(run.getRecipe().getId(), Integer.MAX_VALUE);
-    }
-
-    private static int earliestRecipe(Map<Integer, Integer> position, RecipeGroup group) {
-        return group.getStages().stream()
-                .flatMap(stage -> stage.getRuns().stream())
-                .mapToInt(run -> positionOf(position, run))
-                .min()
-                .orElse(Integer.MAX_VALUE);
-    }
-
-    private static final class Segment {
-        private final int terminal;
-        private final int entryItemId;
-        private final double quantity;
-        private final List<RecipeRun> runs = new ArrayList<>();
-
-        private Segment(int terminal, RecipeRun first) {
-            this.terminal = terminal;
-            this.entryItemId = first.getRecipe().getPrimary().getItemId();
-            this.quantity = first.getRuns() * first.getRecipe().getPrimary().getQuantity();
-        }
     }
 }

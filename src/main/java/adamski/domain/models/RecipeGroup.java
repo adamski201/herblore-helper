@@ -18,14 +18,14 @@ import java.util.List;
 @ToString
 public final class RecipeGroup {
     /**
-     * The item representing the path.
+     * The least mature banked item feeding this row, and what it is named after.
      */
-    private final int pathItemId;
+    private final int entryItemId;
 
     /**
-     * The product this ends at.
+     * The product this row makes.
      */
-    private final int terminalItemId;
+    private final int productItemId;
 
     /**
      * Least mature first.
@@ -46,8 +46,8 @@ public final class RecipeGroup {
 
     private final double xp;
 
-    public RecipeGroup(int pathItemId,
-                       int terminalItemId,
+    public RecipeGroup(int entryItemId,
+                       int productItemId,
                        List<RecipeStage> stages,
                        List<RecipeStep> steps,
                        double outputQuantity,
@@ -55,19 +55,12 @@ public final class RecipeGroup {
                        double xp) {
         if (stages.isEmpty()) throw new IllegalArgumentException("a group needs at least one stage");
 
-        this.pathItemId = pathItemId;
-        this.terminalItemId = terminalItemId;
+        this.entryItemId = entryItemId;
+        this.productItemId = productItemId;
         this.stages = List.copyOf(stages);
         this.steps = List.copyOf(steps);
         this.outputQuantity = outputQuantity;
         this.secondaryDemand = secondaryDemand;
         this.xp = xp;
-    }
-
-    /**
-     * The least mature item entering this path, which is what the row is named after.
-     */
-    public int getEntryItemId() {
-        return stages.get(0).getEntryItemId();
     }
 }

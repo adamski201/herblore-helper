@@ -1,20 +1,18 @@
 package adamski.app;
 
-import adamski.data.RecipePaths;
 import adamski.data.Recipes;
 import adamski.domain.calculators.RecipeGrouper;
-import adamski.domain.calculators.RecipeRoutes;
+import adamski.domain.calculators.RecipeGraph;
 import adamski.domain.calculators.RecipeYieldCalculator;
+import adamski.domain.calculators.RowPlanner;
 import adamski.domain.calculators.SecondaryBalanceCalculator;
 import adamski.domain.models.ItemQuantities;
 import adamski.domain.models.ItemSource;
-import adamski.domain.models.Recipe;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
@@ -33,15 +31,16 @@ public class HerbloreApp {
     private static final Set<ItemSource> SOURCES =
             EnumSet.of(ItemSource.Bank, ItemSource.PotionStorage, ItemSource.SeedVault);
 
-    private static final RecipeRoutes ROUTES = new RecipeRoutes(Recipes.all(), RecipePaths.pathsByItem());
-
-    static final List<Recipe> RECIPES = ROUTES.defaultSelection();
-
-    private static final Map<Integer, Integer> TERMINAL_BY_ITEM = ROUTES.terminalByItem(RECIPES);
+    /**
+     * The chosen product per row, keyed by the row's entry item. Empty until config lands, so every
+     * row takes its default.
+     */
+    private final Map<Integer, Integer> productByItem = new HashMap<>();
 
     private final List<HerbloreListener> listeners = new CopyOnWriteArrayList<>();
 
     private final HerbloreStore store;
+    private final RecipeGraph graph;
 
     @Getter
     private volatile HerbloreResult result;
@@ -49,6 +48,7 @@ public class HerbloreApp {
     @Inject
     public HerbloreApp(HerbloreStore store) {
         this.store = store;
+        this.graph = new RecipeGraph(Recipes.all());
     }
 
     public void addListener(HerbloreListener listener) {
@@ -63,9 +63,13 @@ public class HerbloreApp {
         final var delta = store.updateState(changed);
         if (delta.isEmpty()) return;
 
+        // Gather all owned items across item sources e.g. bank, seed vault
         final var ownedItems = mergeSources(store.getState());
 
-        final var recipeRunsByBankedItem = RecipeYieldCalculator.calculateByBankedItem(ownedItems, RECIPES);
+        final var rows = RowPlanner.plan(ownedItems, productByItem, graph);
+        final var selection = RowPlanner.select(rows, graph);
+
+        final var recipeRunsByBankedItem = RecipeYieldCalculator.calculateByBankedItem(ownedItems, selection);
 
         final var yields = recipeRunsByBankedItem.values().stream()
                 .flatMap(List::stream)
@@ -73,7 +77,7 @@ public class HerbloreApp {
 
         result = new HerbloreResult(
                 ownedItems,
-                RecipeGrouper.group(recipeRunsByBankedItem, RecipePaths.pathsByItem(), TERMINAL_BY_ITEM, RECIPES),
+                RecipeGrouper.group(recipeRunsByBankedItem, rows, ownedItems),
                 SecondaryBalanceCalculator.calculate(yields, ownedItems));
 
         log.debug("sources changed: {}, banked xp: {}", delta.keySet(), result.getTotalXp());

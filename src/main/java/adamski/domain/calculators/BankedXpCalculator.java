@@ -1,6 +1,7 @@
 package adamski.domain.calculators;
 
 import adamski.domain.models.BankedXpResult;
+import adamski.domain.models.Recipe;
 import adamski.domain.models.RecipeRun;
 
 import java.util.HashMap;
@@ -18,7 +19,7 @@ public final class BankedXpCalculator {
      * @param yields how many times each recipe runs, from {@link RecipeYieldCalculator}.
      */
     public static BankedXpResult calculate(List<RecipeRun> yields) {
-        final Map<Integer, Double> xpPerRecipe = new HashMap<>();
+        final Map<Recipe, Double> xpPerRecipe = new HashMap<>();
         double total = 0;
 
         for (RecipeRun yield : yields) {
@@ -26,7 +27,7 @@ public final class BankedXpCalculator {
             if (xp == 0) continue;
 
             total += xp;
-            xpPerRecipe.merge(yield.getRecipe().getId(), xp, Double::sum);
+            xpPerRecipe.merge(yield.getRecipe(), xp, Double::sum);
         }
 
         return new BankedXpResult(total, xpPerRecipe);

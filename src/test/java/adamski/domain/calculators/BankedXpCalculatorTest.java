@@ -30,8 +30,8 @@ public class BankedXpCalculatorTest {
     public void xpIsRunsTimesRecipeXp() {
         final BankedXpResult result = calculate(run(WORTH_FIVE, 4), run(WORTH_TWENTY, 3));
 
-        assertEquals(20.0, result.getXpPerRecipe().get(10), DELTA);
-        assertEquals(60.0, result.getXpPerRecipe().get(11), DELTA);
+        assertEquals(20.0, result.getXpPerRecipe().get(WORTH_FIVE), DELTA);
+        assertEquals(60.0, result.getXpPerRecipe().get(WORTH_TWENTY), DELTA);
         assertEquals(80.0, result.getTotal(), DELTA);
     }
 
@@ -46,7 +46,7 @@ public class BankedXpCalculatorTest {
     public void zeroXpRecipesAreOmittedFromTheBreakdown() {
         final BankedXpResult result = calculate(run(WORTH_NOTHING, 9), run(WORTH_FIVE, 2));
 
-        assertFalse(result.getXpPerRecipe().containsKey(12));
+        assertFalse(result.getXpPerRecipe().containsKey(WORTH_NOTHING));
         assertEquals(10.0, result.getTotal(), DELTA);
     }
 
@@ -63,7 +63,7 @@ public class BankedXpCalculatorTest {
     public void aRecipeAppearingTwiceSumsRatherThanOverwriting() {
         final BankedXpResult result = calculate(run(WORTH_TWENTY, 4), run(WORTH_TWENTY, 6));
 
-        assertEquals(200.0, result.getXpPerRecipe().get(11), DELTA);
+        assertEquals(200.0, result.getXpPerRecipe().get(WORTH_TWENTY), DELTA);
         assertEquals(200.0, result.getTotal(), DELTA);
     }
 
