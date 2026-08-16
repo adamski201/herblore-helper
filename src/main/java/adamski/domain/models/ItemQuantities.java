@@ -23,7 +23,7 @@ public final class ItemQuantities {
     private final Map<Integer, Double> byItemId;
 
     private ItemQuantities(Map<Integer, Double> byItemId) {
-        this.byItemId = Collections.unmodifiableMap(new HashMap<>(byItemId));
+        this.byItemId = Map.copyOf(byItemId);
     }
 
     public static ItemQuantities of(Map<Integer, Double> byItemId) {

@@ -1,8 +1,9 @@
 package adamski.app;
 
 import adamski.data.RecipePaths;
-import adamski.data.RecipeRoutes;
+import adamski.data.Recipes;
 import adamski.domain.calculators.RecipeGrouper;
+import adamski.domain.calculators.RecipeRoutes;
 import adamski.domain.calculators.RecipeYieldCalculator;
 import adamski.domain.calculators.SecondaryBalanceCalculator;
 import adamski.domain.models.ItemQuantities;
@@ -32,9 +33,11 @@ public class HerbloreApp {
     private static final Set<ItemSource> SOURCES =
             EnumSet.of(ItemSource.Bank, ItemSource.PotionStorage, ItemSource.SeedVault);
 
-    static final List<Recipe> RECIPES = RecipeRoutes.defaultSelection();
+    private static final RecipeRoutes ROUTES = new RecipeRoutes(Recipes.all(), RecipePaths.pathsByItem());
 
-    private static final Map<Integer, Integer> TERMINAL_BY_ITEM = RecipeRoutes.terminalByItem(RECIPES);
+    static final List<Recipe> RECIPES = ROUTES.defaultSelection();
+
+    private static final Map<Integer, Integer> TERMINAL_BY_ITEM = ROUTES.terminalByItem(RECIPES);
 
     private final List<HerbloreListener> listeners = new CopyOnWriteArrayList<>();
 

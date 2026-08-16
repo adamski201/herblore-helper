@@ -1,5 +1,6 @@
-package adamski.data;
+package adamski.domain.calculators;
 
+import adamski.data.Recipes;
 import adamski.domain.models.Recipe;
 import net.runelite.api.gameval.ItemID;
 import org.junit.Test;
@@ -13,9 +14,11 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class RecipeDependencyResolverTest {
+    private static final RecipeDependencyResolver DEPENDENCIES = new RecipeDependencyResolver(Recipes.all());
+
     @Test
     public void shippedTableResolves() {
-        assertFalse(RecipeDependencyResolver.order().isEmpty());
+        assertFalse(DEPENDENCIES.order().isEmpty());
     }
 
     @Test
@@ -26,7 +29,7 @@ public class RecipeDependencyResolverTest {
             expected.add(recipe.getOutput().getItemId());
         }
 
-        final List<Integer> order = RecipeDependencyResolver.order();
+        final List<Integer> order = DEPENDENCIES.order();
 
         assertEquals(expected.size(), order.size());
         assertEquals(expected, new HashSet<>(order));
@@ -34,7 +37,7 @@ public class RecipeDependencyResolverTest {
 
     @Test
     public void everyRecipeHasItsPrimaryBeforeItsOutput() {
-        final List<Integer> order = RecipeDependencyResolver.order();
+        final List<Integer> order = DEPENDENCIES.order();
 
         for (Recipe recipe : Recipes.all()) {
             final int primary = order.indexOf(recipe.getPrimary().getItemId());
@@ -57,7 +60,7 @@ public class RecipeDependencyResolverTest {
 
     @Test
     public void anItemWithTwoProducersReturnsBoth() {
-        final List<Recipe> producers = RecipeDependencyResolver.producersOf(ItemID._1DOSE2COMBAT);
+        final List<Recipe> producers = DEPENDENCIES.producersOf(ItemID._1DOSE2COMBAT);
 
         final Set<Integer> ids = new HashSet<>();
         producers.forEach(r -> ids.add(r.getId()));
@@ -67,16 +70,16 @@ public class RecipeDependencyResolverTest {
 
     @Test
     public void terminalItemHasNoProducers() {
-        assertTrue(RecipeDependencyResolver.producersOf(ItemID.VIAL_WATER).isEmpty());
+        assertTrue(DEPENDENCIES.producersOf(ItemID.VIAL_WATER).isEmpty());
     }
 
     @Test
     public void unknownItemReturnsEmptyRatherThanNull() {
-        assertTrue(RecipeDependencyResolver.producersOf(ItemID.ABYSSAL_WHIP).isEmpty());
+        assertTrue(DEPENDENCIES.producersOf(ItemID.ABYSSAL_WHIP).isEmpty());
     }
 
     private static void assertOrdered(int... itemIds) {
-        final List<Integer> order = RecipeDependencyResolver.order();
+        final List<Integer> order = DEPENDENCIES.order();
 
         for (int i = 1; i < itemIds.length; i++) {
             final int before = order.indexOf(itemIds[i - 1]);

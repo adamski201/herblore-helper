@@ -1,5 +1,6 @@
 package adamski.data;
 
+import adamski.domain.calculators.RecipeRoutes;
 import adamski.domain.models.Recipe;
 import net.runelite.api.gameval.ItemID;
 import org.junit.Test;
@@ -17,6 +18,8 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 public class RecipePathsTest {
+    private static final RecipeRoutes ROUTES = new RecipeRoutes(Recipes.all(), RecipePaths.pathsByItem());
+
     /**
      * Stops the table going stale - an unassigned item would put xp in the total but in no path.
      */
@@ -44,7 +47,7 @@ public class RecipePathsTest {
 
         // Counted against the path the options land on, since that is the row the choice governs
         RecipePaths.pathsByItem().keySet().forEach(itemId -> {
-            final Map<Integer, Long> byDestination = RecipeRoutes.optionsFor(itemId).stream()
+            final Map<Integer, Long> byDestination = ROUTES.optionsFor(itemId).stream()
                     .collect(Collectors.groupingBy(
                             recipe -> RecipePaths.pathOf(recipe.getOutput().getItemId()),
                             Collectors.counting()));

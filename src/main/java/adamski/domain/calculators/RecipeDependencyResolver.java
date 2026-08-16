@@ -1,4 +1,4 @@
-package adamski.data;
+package adamski.domain.calculators;
 
 import adamski.domain.models.Recipe;
 
@@ -20,22 +20,22 @@ import java.util.Set;
  * Secondaries are assumed to be infinite and not taken into account.
  */
 public final class RecipeDependencyResolver {
-    private static final Map<Integer, List<Recipe>> PRODUCERS = new HashMap<>();
-    private static final List<Integer> ORDER;
+    private final Map<Integer, List<Recipe>> producers = new HashMap<>();
+    private final List<Integer> order;
 
-    static {
+    public RecipeDependencyResolver(List<Recipe> recipes) {
         final Set<Integer> nodes = new LinkedHashSet<>();
         final Map<Integer, Set<Integer>> successors = new HashMap<>();
         final Map<Integer, Integer> inDegree = new HashMap<>();
 
-        for (Recipe recipe : Recipes.all()) {
+        for (Recipe recipe : recipes) {
             final int primary = recipe.getPrimary().getItemId();
             final int output = recipe.getOutput().getItemId();
 
             nodes.add(primary);
             nodes.add(output);
 
-            PRODUCERS.computeIfAbsent(output, k -> new ArrayList<>()).add(recipe);
+            producers.computeIfAbsent(output, k -> new ArrayList<>()).add(recipe);
 
             // Deduplicate recipes that share primary/output pair
             if (successors.computeIfAbsent(primary, k -> new HashSet<>()).add(output)) {
@@ -43,24 +43,21 @@ public final class RecipeDependencyResolver {
             }
         }
 
-        ORDER = kahn(nodes, successors, inDegree);
-    }
-
-    private RecipeDependencyResolver() {
+        order = kahn(nodes, successors, inDegree);
     }
 
     /**
      * @return item ids in dependency order - an item never precedes one its production depends on
      */
-    public static List<Integer> order() {
-        return Collections.unmodifiableList(ORDER);
+    public List<Integer> order() {
+        return Collections.unmodifiableList(order);
     }
 
     /**
      * @return the recipes whose output is this item, empty for a terminal item nothing produces
      */
-    public static List<Recipe> producersOf(int itemId) {
-        return Collections.unmodifiableList(PRODUCERS.getOrDefault(itemId, Collections.emptyList()));
+    public List<Recipe> producersOf(int itemId) {
+        return Collections.unmodifiableList(producers.getOrDefault(itemId, Collections.emptyList()));
     }
 
     private static List<Integer> kahn(Set<Integer> nodes,
