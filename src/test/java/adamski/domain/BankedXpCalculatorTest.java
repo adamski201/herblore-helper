@@ -1,9 +1,5 @@
-package adamski.domain.calculators;
+package adamski.domain;
 
-import adamski.domain.models.BankedXpResult;
-import adamski.domain.models.Ingredient;
-import adamski.domain.models.Recipe;
-import adamski.domain.models.RecipeRun;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -30,8 +26,8 @@ public class BankedXpCalculatorTest {
     public void xpIsRunsTimesRecipeXp() {
         final BankedXpResult result = calculate(run(WORTH_FIVE, 4), run(WORTH_TWENTY, 3));
 
-        assertEquals(20.0, result.getXpPerRecipe().get(10), DELTA);
-        assertEquals(60.0, result.getXpPerRecipe().get(11), DELTA);
+        assertEquals(20.0, result.getXpPerRecipeId().get(WORTH_FIVE.getId()), DELTA);
+        assertEquals(60.0, result.getXpPerRecipeId().get(WORTH_TWENTY.getId()), DELTA);
         assertEquals(80.0, result.getTotal(), DELTA);
     }
 
@@ -46,7 +42,7 @@ public class BankedXpCalculatorTest {
     public void zeroXpRecipesAreOmittedFromTheBreakdown() {
         final BankedXpResult result = calculate(run(WORTH_NOTHING, 9), run(WORTH_FIVE, 2));
 
-        assertFalse(result.getXpPerRecipe().containsKey(12));
+        assertFalse(result.getXpPerRecipeId().containsKey(WORTH_NOTHING.getId()));
         assertEquals(10.0, result.getTotal(), DELTA);
     }
 
@@ -54,16 +50,28 @@ public class BankedXpCalculatorTest {
     public void totalIsTheSumOfTheBreakdown() {
         final BankedXpResult result = calculate(run(WORTH_FIVE, 7), run(WORTH_TWENTY, 11), run(WORTH_NOTHING, 3));
 
-        final double summed = result.getXpPerRecipe().values().stream().mapToDouble(Double::doubleValue).sum();
+        final double summed = result.getXpPerRecipeId().values().stream().mapToDouble(Double::doubleValue).sum();
 
         assertEquals(summed, result.getTotal(), DELTA);
+    }
+
+    /**
+     * The breakdown is keyed by id, so the same recipe carrying different numbers - a modified
+     * copy of the table - still lands on one entry rather than splitting in two.
+     */
+    @Test
+    public void recipesSharingAnIdShareABreakdownEntry() {
+        final BankedXpResult result = calculate(run(WORTH_TWENTY, 2), run(recipe(11, 40f), 1));
+
+        assertEquals(1, result.getXpPerRecipeId().size());
+        assertEquals(80.0, result.getXpPerRecipeId().get(WORTH_TWENTY.getId()), DELTA);
     }
 
     @Test
     public void aRecipeAppearingTwiceSumsRatherThanOverwriting() {
         final BankedXpResult result = calculate(run(WORTH_TWENTY, 4), run(WORTH_TWENTY, 6));
 
-        assertEquals(200.0, result.getXpPerRecipe().get(11), DELTA);
+        assertEquals(200.0, result.getXpPerRecipeId().get(WORTH_TWENTY.getId()), DELTA);
         assertEquals(200.0, result.getTotal(), DELTA);
     }
 
@@ -72,7 +80,7 @@ public class BankedXpCalculatorTest {
         final BankedXpResult result = BankedXpCalculator.calculate(Collections.emptyList());
 
         assertEquals(0, result.getTotal(), DELTA);
-        assertTrue(result.getXpPerRecipe().isEmpty());
+        assertTrue(result.getXpPerRecipeId().isEmpty());
     }
 
     private static BankedXpResult calculate(RecipeRun... yields) {

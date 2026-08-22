@@ -2,11 +2,11 @@ package adamski.ui;
 
 import adamski.app.HerbloreListener;
 import adamski.app.HerbloreResult;
-import adamski.domain.models.ItemQuantities;
-import adamski.domain.models.RecipeGroup;
-import adamski.domain.models.RecipeStage;
-import adamski.domain.models.RecipeStep;
-import adamski.domain.models.SecondaryBalance;
+import adamski.domain.ItemQuantities;
+import adamski.domain.ChainResult;
+import adamski.domain.ChainItemXp;
+import adamski.domain.ChainRecipeXp;
+import adamski.domain.SecondaryBalance;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.PluginPanel;
 
@@ -41,7 +41,7 @@ public class HerblorePanel extends PluginPanel implements HerbloreListener {
     @Override
     public void onResultChanged(HerbloreResult result) {
         // Names resolve here - ItemManager cannot be touched from the EDT
-        final String text = formatPaths(result.getPaths())
+        final String text = formatChainResults(result.getChainResults())
                 + formatSecondaries(result.getSecondaryBalance())
                 + formatItems(result.getOwned());
 
@@ -53,28 +53,29 @@ public class HerblorePanel extends PluginPanel implements HerbloreListener {
         });
     }
 
-    private String formatPaths(List<RecipeGroup> paths) {
-        final StringBuilder sb = new StringBuilder("XP by path\n");
+    private String formatChainResults(List<ChainResult> chainResults) {
+        final StringBuilder sb = new StringBuilder("XP by row\n");
 
-        paths.stream()
-                .filter(path -> path.getXp() > 0)
-                .sorted(Comparator.comparingDouble(RecipeGroup::getXp).reversed())
-                .forEach(path -> {
-                    sb.append(String.format("%7s  %s -> %s%n", abbreviate(path.getXp()),
-                            name(path.getEntryItemId()), name(path.getTerminalItemId())));
+        chainResults.stream()
+                .filter(chainResult -> chainResult.getXp() > 0)
+                .sorted(Comparator.comparingDouble(ChainResult::getXp).reversed())
+                .forEach(chainResult -> {
+                    sb.append(String.format("%7s  %s -> %s%n", abbreviate(chainResult.getXp()),
+                            name(RowLabels.nameFor(chainResult.getEntryItemId())), name(chainResult.getProductItemId())));
 
-                    sb.append(String.format("%7s    %s%n", abbreviate(path.getOutputQuantity()), "made"));
+                    sb.append(String.format("%7s    %s%n", abbreviate(chainResult.getOutputQuantity()), "made"));
 
                     sb.append("         by item\n");
-                    for (RecipeStage stage : path.getStages()) {
-                        if (stage.getXp() == 0) continue;
-                        sb.append(String.format("%7s    %s%n", abbreviate(stage.getXp()), name(stage.getEntryItemId())));
+                    for (ChainItemXp contribution : chainResult.getItemContributions()) {
+                        if (contribution.getXp() == 0) continue;
+                        sb.append(String.format("%7s    %s%n", abbreviate(contribution.getXp()),
+                                name(contribution.getEntryItemId())));
                     }
 
-                    sb.append("         by step\n");
-                    for (RecipeStep step : path.getSteps()) {
-                        sb.append(String.format("%7s    %s%n", abbreviate(step.getXp()),
-                                name(step.getRecipe().getOutput().getItemId())));
+                    sb.append("         by recipe\n");
+                    for (ChainRecipeXp contribution : chainResult.getRecipeContributions()) {
+                        sb.append(String.format("%7s    %s%n", abbreviate(contribution.getXp()),
+                                name(contribution.getRecipe().getOutput().getItemId())));
                     }
                 });
 

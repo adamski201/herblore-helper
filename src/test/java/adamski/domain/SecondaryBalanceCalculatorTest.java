@@ -1,10 +1,5 @@
-package adamski.domain.calculators;
+package adamski.domain;
 
-import adamski.domain.models.Ingredient;
-import adamski.domain.models.ItemQuantities;
-import adamski.domain.models.Recipe;
-import adamski.domain.models.RecipeRun;
-import adamski.domain.models.SecondaryBalance;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -88,8 +83,7 @@ public class SecondaryBalanceCalculatorTest {
 
     @Test
     public void noRunsIsEmpty() {
-        final SecondaryBalance balance = SecondaryBalanceCalculator.calculate(
-                Collections.emptyList(), owned(50, 10));
+        final SecondaryBalance balance = calculate(owned(50, 10));
 
         assertTrue(balance.getDemanded().isEmpty());
         assertTrue(balance.getNet().isEmpty());
@@ -104,8 +98,8 @@ public class SecondaryBalanceCalculatorTest {
     }
 
     private static SecondaryBalance calculate(ItemQuantities owned, RecipeRun... yields) {
-        final List<RecipeRun> list = Arrays.asList(yields);
-        return SecondaryBalanceCalculator.calculate(list, owned);
+        return SecondaryBalanceCalculator.netAgainstOwned(
+                SecondaryBalanceCalculator.sumDemand(Arrays.asList(yields)), owned);
     }
 
     private static RecipeRun run(Recipe recipe, double runs) {

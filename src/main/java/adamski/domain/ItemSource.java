@@ -1,4 +1,4 @@
-package adamski.domain.models;
+package adamski.domain;
 
 public enum ItemSource {
     PotionStorage,

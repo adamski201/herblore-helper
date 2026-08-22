@@ -1,27 +1,23 @@
 package adamski.app;
 
-import adamski.data.RecipePaths;
 import adamski.data.Recipes;
-import adamski.domain.calculators.RecipeGrouper;
-import adamski.domain.calculators.RecipeRoutes;
-import adamski.domain.calculators.RecipeYieldCalculator;
-import adamski.domain.calculators.SecondaryBalanceCalculator;
-import adamski.domain.models.ItemQuantities;
-import adamski.domain.models.ItemSource;
-import adamski.domain.models.Recipe;
+import adamski.domain.Recipe;
+import adamski.domain.RecipeChainCalculator;
+import adamski.domain.RecipeGraph;
+import adamski.domain.ChainResultCalculator;
+import adamski.domain.ItemQuantities;
+import adamski.domain.ItemSource;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.stream.Collectors;
 
 /**
  * Orchestrator - receives changes from the adapter, updates state via the store, runs the
@@ -33,15 +29,24 @@ public class HerbloreApp {
     private static final Set<ItemSource> SOURCES =
             EnumSet.of(ItemSource.Bank, ItemSource.PotionStorage, ItemSource.SeedVault);
 
-    private static final RecipeRoutes ROUTES = new RecipeRoutes(Recipes.all(), RecipePaths.pathsByItem());
-
-    static final List<Recipe> RECIPES = ROUTES.defaultSelection();
-
-    private static final Map<Integer, Integer> TERMINAL_BY_ITEM = ROUTES.terminalByItem(RECIPES);
+    /**
+     * The chosen product per chain, keyed by the chain's root item. Empty until config lands, so
+     * every chain takes its default.
+     */
+    private final Map<Integer, Integer> productByItem = new HashMap<>();
 
     private final List<HerbloreListener> listeners = new CopyOnWriteArrayList<>();
 
     private final HerbloreStore store;
+
+    /**
+     * The recipe table in force. Swapped rather than mutated, because a recipe is a map key and
+     * results hold on to the ones they were computed from.
+     */
+    @Getter
+    private List<Recipe> recipes;
+
+    private RecipeChainCalculator chainCalculator;
 
     @Getter
     private volatile HerbloreResult result;
@@ -49,6 +54,7 @@ public class HerbloreApp {
     @Inject
     public HerbloreApp(HerbloreStore store) {
         this.store = store;
+        adoptRecipes(Recipes.all());
     }
 
     public void addListener(HerbloreListener listener) {
@@ -63,21 +69,28 @@ public class HerbloreApp {
         final var delta = store.updateState(changed);
         if (delta.isEmpty()) return;
 
+        log.debug("sources changed: {}", delta.keySet());
+
+        result = recalculate();
+        publishResult(result);
+    }
+
+    private void adoptRecipes(List<Recipe> recipes) {
+        this.recipes = List.copyOf(recipes);
+        this.chainCalculator = new RecipeChainCalculator(new RecipeGraph(this.recipes));
+    }
+
+    private HerbloreResult recalculate() {
+        // Gather all owned items across item sources e.g. bank, seed vault
         final var ownedItems = mergeSources(store.getState());
 
-        final var recipeRunsByBankedItem = RecipeYieldCalculator.calculateByBankedItem(ownedItems, RECIPES);
+        // Determine which recipe chains will be used (based on product selection)
+        final var recipeChains = chainCalculator.calculate(ownedItems, productByItem);
 
-        final var yields = recipeRunsByBankedItem.values().stream()
-                .flatMap(List::stream)
-                .collect(Collectors.toList());
+        // Calculate the XP & quantity result for each chain
+        final var chainResults = ChainResultCalculator.calculate(recipeChains, ownedItems);
 
-        result = new HerbloreResult(
-                ownedItems,
-                RecipeGrouper.group(recipeRunsByBankedItem, RecipePaths.pathsByItem(), TERMINAL_BY_ITEM, RECIPES),
-                SecondaryBalanceCalculator.calculate(yields, ownedItems));
-
-        log.debug("sources changed: {}, banked xp: {}", delta.keySet(), result.getTotalXp());
-        publishResult(result);
+        return new HerbloreResult(ownedItems, chainResults);
     }
 
     private static ItemQuantities mergeSources(Map<ItemSource, ItemQuantities> snapshot) {

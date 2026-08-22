@@ -2,7 +2,7 @@ package adamski.infrastructure;
 
 import adamski.data.Recipes;
 import adamski.data.PotionDoses;
-import adamski.domain.models.ItemQuantities;
+import adamski.domain.ItemQuantities;
 import net.runelite.api.Client;
 import net.runelite.api.EnumComposition;
 import net.runelite.api.EnumID;

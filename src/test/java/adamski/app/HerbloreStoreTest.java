@@ -1,7 +1,7 @@
 package adamski.app;
 
-import adamski.domain.models.ItemQuantities;
-import adamski.domain.models.ItemSource;
+import adamski.domain.ItemQuantities;
+import adamski.domain.ItemSource;
 import org.junit.Before;
 import org.junit.Test;
 

@@ -1,7 +1,7 @@
 package adamski.data;
 
-import adamski.domain.models.Ingredient;
-import adamski.domain.models.Recipe;
+import adamski.domain.Ingredient;
+import adamski.domain.Recipe;
 import net.runelite.api.gameval.ItemID;
 
 import java.util.Arrays;

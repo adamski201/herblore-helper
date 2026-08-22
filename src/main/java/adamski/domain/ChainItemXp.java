@@ -1,4 +1,4 @@
-package adamski.domain.models;
+package adamski.domain;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -7,13 +7,13 @@ import lombok.ToString;
 import java.util.List;
 
 /**
- * What one item contributes after entering a path. Holding ranarr seeds, grimy ranarr and ranarr unf
- * gives the ranarr path three stages.
+ * What one item contributes after entering a chain. Holding ranarr seeds, grimy ranarr and ranarr unf
+ * makes three item contributions to the ranarr chain.
  */
 @Getter
 @EqualsAndHashCode
 @ToString
-public final class RecipeStage {
+public final class ChainItemXp {
     private final int entryItemId;
 
     /**
@@ -25,7 +25,7 @@ public final class RecipeStage {
 
     private final double xp;
 
-    public RecipeStage(int entryItemId, double quantity, List<RecipeRun> runs, double xp) {
+    public ChainItemXp(int entryItemId, double quantity, List<RecipeRun> runs, double xp) {
         this.entryItemId = entryItemId;
         this.quantity = quantity;
         this.runs = List.copyOf(runs);
