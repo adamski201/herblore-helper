@@ -1,4 +1,4 @@
-package adamski.domain.models;
+package adamski.domain;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -10,7 +10,7 @@ import java.util.List;
  * A chain of recipes to turn one banked item into one product.
  * <p>
  * Everything banked along the chain joins it rather than starting its own, which is why
- * holding ranarr seeds, grimy ranarr and ranarr unf gives one row and not three.
+ * holding ranarr seeds, grimy ranarr and ranarr unf gives one chain and not three.
  */
 @Getter
 @EqualsAndHashCode

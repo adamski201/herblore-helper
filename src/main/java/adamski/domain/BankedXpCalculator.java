@@ -1,8 +1,5 @@
-package adamski.domain.calculators;
+package adamski.domain;
 
-import adamski.domain.models.BankedXpResult;
-import adamski.domain.models.Recipe;
-import adamski.domain.models.RecipeRun;
 
 import java.util.HashMap;
 import java.util.List;
@@ -11,7 +8,7 @@ import java.util.Map;
 /**
  * How much Herblore XP a set of recipe runs is worth.
  */
-public final class BankedXpCalculator {
+final class BankedXpCalculator {
     private BankedXpCalculator() {
     }
 
@@ -19,7 +16,7 @@ public final class BankedXpCalculator {
      * @param yields how many times each recipe runs, from {@link RecipeYieldCalculator}.
      */
     public static BankedXpResult calculate(List<RecipeRun> yields) {
-        final Map<Recipe, Double> xpPerRecipe = new HashMap<>();
+        final Map<Integer, Double> xpPerRecipeId = new HashMap<>();
         double total = 0;
 
         for (RecipeRun yield : yields) {
@@ -27,9 +24,9 @@ public final class BankedXpCalculator {
             if (xp == 0) continue;
 
             total += xp;
-            xpPerRecipe.merge(yield.getRecipe(), xp, Double::sum);
+            xpPerRecipeId.merge(yield.getRecipe().getId(), xp, Double::sum);
         }
 
-        return new BankedXpResult(total, xpPerRecipe);
+        return new BankedXpResult(total, xpPerRecipeId);
     }
 }

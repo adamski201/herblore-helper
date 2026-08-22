@@ -1,4 +1,4 @@
-package adamski.domain.models;
+package adamski.domain;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;

@@ -1,9 +1,5 @@
-package adamski.domain.calculators;
+package adamski.domain;
 
-import adamski.domain.models.Ingredient;
-import adamski.domain.models.ItemQuantities;
-import adamski.domain.models.Recipe;
-import adamski.domain.models.RecipeRun;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -28,6 +24,17 @@ public class RecipeYieldCalculatorTest {
     private static final Recipe TWO_TO_THREE = recipe(11, 2, 1, 3, 1);
     private static final Recipe ONE_TO_FOUR = recipe(12, 1, 1, 4, 1);
     private static final Recipe PAIRS_TO_FIVE = recipe(13, 3, 2, 5, 2);
+
+    @Test
+    public void oneRecipeRunsAsOftenAsItsPrimaryAllows() {
+        assertRun(RecipeYieldCalculator.calculate(PAIRS_TO_FIVE, 9), PAIRS_TO_FIVE, 4.5);
+    }
+
+    @Test
+    public void oneRecipeYieldsItsOutputQuantityPerRun() {
+        // 9 of item 3 is 4.5 runs of a recipe making 2 at a time
+        assertEquals(9.0, RecipeYieldCalculator.calculate(PAIRS_TO_FIVE, 9).getOutputQuantity(), DELTA);
+    }
 
     @Test
     public void producedItemsFeedTheNextRecipe() {
@@ -94,39 +101,13 @@ public class RecipeYieldCalculatorTest {
         assertTrue(calculate(1, 0, ONE_TO_TWO).isEmpty());
     }
 
-    @Test
-    public void eachBankedItemKeepsItsOwnRuns() {
-        final Map<Integer, Integer> owned = new HashMap<>();
-        owned.put(1, 4);
-        owned.put(2, 10);
-
-        final Map<Integer, List<RecipeRun>> byBankedItem = RecipeYieldCalculator.calculateByBankedItem(
-                ItemQuantities.counted(owned), Arrays.asList(ONE_TO_TWO, TWO_TO_THREE));
-
-        assertEquals(2, byBankedItem.get(1).size()); // through both recipes
-        assertEquals(1, byBankedItem.get(2).size()); // joins at the second
-        assertRun(byBankedItem.get(2).get(0), TWO_TO_THREE, 10);
-    }
-
-    @Test
-    public void bankedItemsThatProduceNothingAreLeftOut() {
-        final Map<Integer, Integer> owned = new HashMap<>();
-        owned.put(1, 4);
-        owned.put(99, 500);
-
-        final Map<Integer, List<RecipeRun>> byBankedItem = RecipeYieldCalculator.calculateByBankedItem(
-                ItemQuantities.counted(owned), Collections.singletonList(ONE_TO_TWO));
-
-        assertEquals(Collections.singleton(1), byBankedItem.keySet());
-    }
-
     private static void assertRun(RecipeRun actual, Recipe expected, double runs) {
         assertEquals(expected, actual.getRecipe());
         assertEquals(runs, actual.getRuns(), DELTA);
     }
 
     private static List<RecipeRun> calculate(int itemId, int quantity, Recipe... orderedRecipes) {
-        return RecipeYieldCalculator.calculate(itemId, quantity, Arrays.asList(orderedRecipes));
+        return RecipeYieldCalculator.cascade(itemId, quantity, Arrays.asList(orderedRecipes));
     }
 
     private static Recipe recipe(int id, int primaryId, int primaryQty, int outputId, int outputQty) {

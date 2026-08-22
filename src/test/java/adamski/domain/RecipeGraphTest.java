@@ -1,8 +1,6 @@
-package adamski.domain.calculators;
+package adamski.domain;
 
 import adamski.data.Recipes;
-import adamski.domain.models.Ingredient;
-import adamski.domain.models.Recipe;
 import net.runelite.api.gameval.ItemID;
 import org.junit.Test;
 

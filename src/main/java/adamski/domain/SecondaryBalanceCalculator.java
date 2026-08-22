@@ -1,9 +1,5 @@
-package adamski.domain.calculators;
+package adamski.domain;
 
-import adamski.domain.models.Ingredient;
-import adamski.domain.models.ItemQuantities;
-import adamski.domain.models.RecipeRun;
-import adamski.domain.models.SecondaryBalance;
 
 import java.util.HashMap;
 import java.util.List;
@@ -17,11 +13,10 @@ public final class SecondaryBalanceCalculator {
     }
 
     /**
-     * @param yields how many times each recipe runs
-     * @param owned  what the player holds
+     * @param demanded what the runs consume, from {@link #sumDemand}
+     * @param owned    what the player holds
      */
-    public static SecondaryBalance calculate(List<RecipeRun> yields, ItemQuantities owned) {
-        final ItemQuantities demanded = demand(yields);
+    public static SecondaryBalance netAgainstOwned(ItemQuantities demanded, ItemQuantities owned) {
         final Map<Integer, Double> net = new HashMap<>();
 
         demanded.forEach((itemId, required) -> net.put(itemId, owned.get(itemId) - required));
@@ -32,7 +27,7 @@ public final class SecondaryBalanceCalculator {
     /**
      * @return how much of each secondary the runs consume
      */
-    public static ItemQuantities demand(List<RecipeRun> yields) {
+    public static ItemQuantities sumDemand(List<RecipeRun> yields) {
         final Map<Integer, Double> demanded = new HashMap<>();
 
         for (RecipeRun yield : yields) {

@@ -1,18 +1,13 @@
 package adamski.app;
 
-import adamski.data.Recipes;
-import adamski.domain.calculators.BankedXpCalculator;
-import adamski.domain.calculators.ChainPlanner;
-import adamski.domain.calculators.RecipeGraph;
-import adamski.domain.calculators.RecipeYieldCalculator;
-import adamski.domain.models.ChainPlan;
-import adamski.domain.models.ItemQuantities;
-import adamski.domain.models.ItemSource;
-import adamski.domain.models.RecipeGroup;
-import adamski.domain.models.RecipeRun;
-import adamski.domain.models.RecipeStage;
-import adamski.domain.models.RecipeStep;
-import adamski.domain.models.SecondaryBalance;
+import adamski.domain.Ingredient;
+import adamski.domain.ItemQuantities;
+import adamski.domain.ItemSource;
+import adamski.domain.Recipe;
+import adamski.domain.ChainResult;
+import adamski.domain.ChainItemXp;
+import adamski.domain.ChainRecipeXp;
+import adamski.domain.SecondaryBalance;
 import net.runelite.api.gameval.ItemID;
 import org.junit.Before;
 import org.junit.Test;
@@ -36,8 +31,6 @@ import static org.junit.Assert.assertTrue;
 public class HerbloreAppTest {
     private static final double DELTA = 0.0001;
 
-    private static final RecipeGraph GRAPH = new RecipeGraph(Recipes.all());
-
     /**
      * r5 degrime 7.5, r20 unf 0, r44 defence potion 75. Terminal - caviar mixes run off caviar.
      */
@@ -60,7 +53,7 @@ public class HerbloreAppTest {
         final HerbloreResult result = bank(new HashMap<>());
 
         assertEquals(0, result.getTotalXp(), DELTA);
-        assertTrue(result.getPaths().isEmpty());
+        assertTrue(result.getChainResults().isEmpty());
     }
 
     @Test
@@ -173,25 +166,6 @@ public class HerbloreAppTest {
     }
 
     @Test
-    public void everyRunReachesAPathSoNoXpIsLost() {
-        final Map<Integer, Integer> bank = items(ItemID.UNIDENTIFIED_RANARR, 40);
-        bank.put(ItemID.RANARRVIAL, 25);
-        bank.put(ItemID.BRUT_CAVIAR, 12);
-        bank.put(ItemID.HARRALANDER_SEED, 3);
-
-        // The total is the sum of the paths, so grouping is checked against the ungrouped runs
-        final ChainPlan plan = new ChainPlanner(GRAPH)
-                .plan(ItemQuantities.counted(bank), java.util.Collections.emptyMap());
-
-        final List<RecipeRun> ungrouped = RecipeYieldCalculator
-                .calculateByBankedItem(ItemQuantities.counted(bank), plan.getSelection()).values().stream()
-                .flatMap(List::stream)
-                .collect(Collectors.toList());
-
-        assertEquals(BankedXpCalculator.calculate(ungrouped).getTotal(), bank(bank).getTotalXp(), DELTA);
-    }
-
-    @Test
     public void everyMaturityOfAHerbIsAStageOnOneRow() {
         final Map<Integer, Integer> bank = items(ItemID.RANARR_SEED, 2);
         bank.put(ItemID.UNIDENTIFIED_RANARR, 40);
@@ -199,10 +173,10 @@ public class HerbloreAppTest {
 
         app.sourcesUpdated(source(ItemSource.Bank, bank));
 
-        final RecipeGroup ranarr = app.getResult().getPaths().get(0);
+        final ChainResult ranarr = app.getResult().getChainResults().get(0);
 
         assertEquals(Arrays.asList(ItemID.RANARR_SEED, ItemID.UNIDENTIFIED_RANARR, ItemID.RANARRVIAL),
-                ranarr.getStages().stream().map(RecipeStage::getEntryItemId).collect(Collectors.toList()));
+                ranarr.getItemContributions().stream().map(ChainItemXp::getEntryItemId).collect(Collectors.toList()));
     }
 
     @Test
@@ -212,8 +186,8 @@ public class HerbloreAppTest {
 
         app.sourcesUpdated(source(ItemSource.Bank, bank));
 
-        final Map<Integer, Integer> entryByTerminal = app.getResult().getPaths().stream()
-                .collect(Collectors.toMap(RecipeGroup::getProductItemId, RecipeGroup::getEntryItemId));
+        final Map<Integer, Integer> entryByTerminal = app.getResult().getChainResults().stream()
+                .collect(Collectors.toMap(ChainResult::getProductItemId, ChainResult::getEntryItemId));
 
         assertEquals(Integer.valueOf(ItemID.CADANTINE), entryByTerminal.get(ItemID._1DOSE2DEFENSE));
         assertEquals(Integer.valueOf(ItemID.CADANTINE_BLOODVIAL), entryByTerminal.get(ItemID._1DOSEBASTION));
@@ -224,20 +198,20 @@ public class HerbloreAppTest {
         // One grimy ranarr runs r44 once, making 3 doses of defence potion from 1 white berry
         app.sourcesUpdated(source(ItemSource.Bank, items(ItemID.UNIDENTIFIED_RANARR, 1)));
 
-        final RecipeGroup ranarr = app.getResult().getPaths().get(0);
+        final ChainResult ranarr = app.getResult().getChainResults().get(0);
 
         assertEquals(3.0, ranarr.getOutputQuantity(), DELTA);
         assertEquals(1.0, ranarr.getSecondaryDemand().get(ItemID.WHITE_BERRIES), DELTA);
-        assertEquals(1.0, ranarr.getStages().get(0).getQuantity(), DELTA);
+        assertEquals(1.0, ranarr.getItemContributions().get(0).getQuantity(), DELTA);
     }
 
     @Test
     public void aChainIsOneRowEvenWhereItCrossesIntoAnotherPotion() {
-        // Harralander runs to stat restore and on into guthix balance - one plan, one row
+        // Harralander runs to stat restore and on into guthix balance - one chain, one result
         app.sourcesUpdated(source(ItemSource.Bank, items(ItemID.UNIDENTIFIED_HARRALANDER, 20)));
 
-        assertEquals(1, app.getResult().getPaths().size());
-        assertEquals(ItemID.UNIDENTIFIED_HARRALANDER, app.getResult().getPaths().get(0).getEntryItemId());
+        assertEquals(1, app.getResult().getChainResults().size());
+        assertEquals(ItemID.UNIDENTIFIED_HARRALANDER, app.getResult().getChainResults().get(0).getEntryItemId());
     }
 
     @Test
@@ -247,8 +221,8 @@ public class HerbloreAppTest {
 
         app.sourcesUpdated(source(ItemSource.Bank, bank));
 
-        final Set<Integer> entries = app.getResult().getPaths().stream()
-                .map(RecipeGroup::getEntryItemId)
+        final Set<Integer> entries = app.getResult().getChainResults().stream()
+                .map(ChainResult::getEntryItemId)
                 .collect(Collectors.toSet());
 
         assertTrue(entries.contains(ItemID.UNIDENTIFIED_HARRALANDER));
@@ -300,18 +274,46 @@ public class HerbloreAppTest {
         assertEquals(first, app.getResult());
     }
 
+    @Test
+    public void swappingTheRecipeTableRepublishesAgainstWhatIsHeld() {
+        app.sourcesUpdated(source(ItemSource.Bank, items(ItemID.UNIDENTIFIED_RANARR, 2)));
+        assertEquals(2 * GRIMY_RANARR_XP, app.getResult().getTotalXp(), DELTA);
+
+        app.useRecipes(withXpDoubled(app.getRecipes()));
+
+        assertEquals(2 * 2 * GRIMY_RANARR_XP, app.getResult().getTotalXp(), DELTA);
+    }
+
+    @Test
+    public void aTableSwappedInBeforeTheFirstReadPublishesNothing() {
+        app.useRecipes(withXpDoubled(app.getRecipes()));
+
+        assertNull(app.getResult());
+    }
+
+    /**
+     * Stands in for a modifier - the app only cares that the numbers differ, not why.
+     */
+    private static List<Recipe> withXpDoubled(List<Recipe> recipes) {
+        return recipes.stream()
+                .map(recipe -> new Recipe(recipe.getId(), recipe.getPrimary(),
+                        recipe.getSecondaries().toArray(new Ingredient[0]), recipe.getOutput(),
+                        recipe.getTag(), recipe.getXp() * 2, recipe.getLevel()))
+                .collect(Collectors.toList());
+    }
+
     private HerbloreResult bank(Map<Integer, Integer> bankItems) {
         app.sourcesUpdated(source(ItemSource.Bank, bankItems));
         return app.getResult();
     }
 
     /**
-     * The steps of every path, flattened - a recipe belongs to one path, so nothing collides.
+     * The recipe contributions of every chainResult, flattened - a recipe belongs to one chainResult, so nothing collides.
      */
     private static Map<Integer, Double> xpByRecipe(HerbloreResult result) {
-        return result.getPaths().stream()
-                .flatMap(path -> path.getSteps().stream())
-                .collect(Collectors.toMap(step -> step.getRecipe().getId(), RecipeStep::getXp));
+        return result.getChainResults().stream()
+                .flatMap(chainResult -> chainResult.getRecipeContributions().stream())
+                .collect(Collectors.toMap(step -> step.getRecipe().getId(), ChainRecipeXp::getXp));
     }
 
     private SecondaryBalance bankBalance(Map<Integer, Integer> bankItems) {

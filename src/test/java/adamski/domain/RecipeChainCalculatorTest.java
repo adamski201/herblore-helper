@@ -1,10 +1,5 @@
-package adamski.domain.calculators;
+package adamski.domain;
 
-import adamski.domain.models.ChainPlan;
-import adamski.domain.models.Ingredient;
-import adamski.domain.models.ItemQuantities;
-import adamski.domain.models.Recipe;
-import adamski.domain.models.RecipeChain;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -22,19 +17,19 @@ import static org.junit.Assert.assertTrue;
 /**
  * Synthetic recipes: 1 -> 2 -> 3 -> 4, with 3 also able to make 5, and a stranded 6 -> 7.
  */
-public class ChainPlannerTest {
+public class RecipeChainCalculatorTest {
     private static final Recipe ONE_TO_TWO = recipe(10, 1, 2);
     private static final Recipe TWO_TO_THREE = recipe(11, 2, 3);
     private static final Recipe THREE_TO_FOUR = recipe(12, 3, 4);
     private static final Recipe THREE_TO_FIVE = recipe(13, 3, 5);
     private static final Recipe SIX_TO_SEVEN = recipe(14, 6, 7);
 
-    private static final ChainPlanner PLANNER = new ChainPlanner(new RecipeGraph(
+    private static final RecipeChainCalculator CALCULATOR = new RecipeChainCalculator(new RecipeGraph(
             Arrays.asList(ONE_TO_TWO, TWO_TO_THREE, THREE_TO_FOUR, THREE_TO_FIVE, SIX_TO_SEVEN)));
 
     @Test
     public void oneBankedItemIsOneChain() {
-        final List<RecipeChain> chains = plan(owned(1, 10)).getChains();
+        final List<RecipeChain> chains = calculate(owned(1, 10));
 
         assertEquals(1, chains.size());
         assertEquals(1, chains.get(0).getRootItemId());
@@ -43,7 +38,7 @@ public class ChainPlannerTest {
 
     @Test
     public void anythingAlongTheChainJoinsIt() {
-        final List<RecipeChain> chains = plan(owned(1, 10, 2, 5, 3, 8)).getChains();
+        final List<RecipeChain> chains = calculate(owned(1, 10, 2, 5, 3, 8));
 
         assertEquals(1, chains.size());
         assertEquals(1, chains.get(0).getRootItemId());
@@ -51,12 +46,12 @@ public class ChainPlannerTest {
 
     @Test
     public void theLeastMatureItemRootsTheChain() {
-        assertEquals(1, plan(owned(3, 8, 1, 10)).getChains().get(0).getRootItemId());
+        assertEquals(1, calculate(owned(3, 8, 1, 10)).get(0).getRootItemId());
     }
 
     @Test
     public void anItemThatCannotReachTheProductRootsItsOwnChain() {
-        final List<RecipeChain> chains = plan(owned(1, 10, 6, 4)).getChains();
+        final List<RecipeChain> chains = calculate(owned(1, 10, 6, 4));
 
         assertEquals(2, chains.size());
         assertEquals(List.of(1, 6), chains.stream()
@@ -69,7 +64,7 @@ public class ChainPlannerTest {
         final Map<Integer, Integer> chosen = new HashMap<>();
         chosen.put(1, 2); // stop at item 2
 
-        final List<RecipeChain> chains = PLANNER.plan(owned(1, 10, 3, 5), chosen).getChains();
+        final List<RecipeChain> chains = CALCULATOR.calculate(owned(1, 10, 3, 5), chosen);
 
         assertEquals(2, chains.size());
         assertEquals(2, chains.get(0).getProductItemId());
@@ -78,7 +73,7 @@ public class ChainPlannerTest {
 
     @Test
     public void anItemThatMakesNothingIsNoChain() {
-        assertTrue(plan(owned(4, 100)).getChains().isEmpty());
+        assertTrue(calculate(owned(4, 100)).isEmpty());
     }
 
     @Test
@@ -86,47 +81,56 @@ public class ChainPlannerTest {
         final Map<Integer, Integer> chosen = new HashMap<>();
         chosen.put(1, 5);
 
-        final ChainPlan plan = PLANNER.plan(owned(1, 10), chosen);
+        final List<RecipeChain> chains = CALCULATOR.calculate(owned(1, 10), chosen);
 
-        assertEquals(List.of(10, 11, 13), plan.getChains().get(0).getRecipes().stream()
+        assertEquals(List.of(10, 11, 13), chains.get(0).getRecipes().stream()
                 .map(Recipe::getId)
                 .collect(Collectors.toList()));
     }
 
     @Test
-    public void theSelectionIsEveryChainsRecipes() {
-        final List<Recipe> selection = plan(owned(1, 10, 6, 4)).getSelection();
+    public void theChainsTogetherCoverEveryRecipe() {
+        final List<Recipe> recipes = recipesOf(calculate(owned(1, 10, 6, 4)));
 
-        assertEquals(Set.of(10, 11, 12, 14), selection.stream()
+        assertEquals(Set.of(10, 11, 12, 14), recipes.stream()
                 .map(Recipe::getId)
                 .collect(Collectors.toSet()));
     }
 
     @Test
-    public void theSelectionRunsProducersBeforeConsumers() {
-        final List<Recipe> selection = plan(owned(1, 10, 6, 4)).getSelection();
+    public void chainOrderRunsProducersBeforeConsumers() {
+        final List<Recipe> recipes = recipesOf(calculate(owned(1, 10, 6, 4)));
 
-        for (int earlier = 0; earlier < selection.size(); earlier++) {
-            for (int later = earlier + 1; later < selection.size(); later++) {
+        for (int earlier = 0; earlier < recipes.size(); earlier++) {
+            for (int later = earlier + 1; later < recipes.size(); later++) {
                 assertNotEquals("a consumer runs before its producer",
-                        selection.get(later).getOutput().getItemId(),
-                        selection.get(earlier).getPrimary().getItemId());
+                        recipes.get(later).getOutput().getItemId(),
+                        recipes.get(earlier).getPrimary().getItemId());
             }
         }
     }
 
     @Test
     public void noPrimaryIsClaimedTwice() {
-        final List<Recipe> selection = plan(owned(1, 10, 2, 5, 3, 8)).getSelection();
+        final List<Recipe> recipes = recipesOf(calculate(owned(1, 10, 2, 5, 3, 8)));
 
-        assertEquals(selection.size(), selection.stream()
+        assertEquals(recipes.size(), recipes.stream()
                 .map(recipe -> recipe.getPrimary().getItemId())
                 .distinct()
                 .count());
     }
 
-    private static ChainPlan plan(ItemQuantities owned) {
-        return PLANNER.plan(owned, Collections.emptyMap());
+    /**
+     * What RecipeYieldCalculator does with the chains it is given.
+     */
+    private static List<Recipe> recipesOf(List<RecipeChain> chains) {
+        return chains.stream()
+                .flatMap(chain -> chain.getRecipes().stream())
+                .collect(Collectors.toList());
+    }
+
+    private static List<RecipeChain> calculate(ItemQuantities owned) {
+        return CALCULATOR.calculate(owned, Collections.emptyMap());
     }
 
     private static ItemQuantities owned(int... pairs) {

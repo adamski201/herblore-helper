@@ -1,8 +1,9 @@
 package adamski.app;
 
-import adamski.domain.models.ItemQuantities;
-import adamski.domain.models.RecipeGroup;
-import adamski.domain.models.SecondaryBalance;
+import adamski.domain.SecondaryBalanceCalculator;
+import adamski.domain.ItemQuantities;
+import adamski.domain.ChainResult;
+import adamski.domain.SecondaryBalance;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
@@ -22,21 +23,32 @@ public final class HerbloreResult {
      */
     private final ItemQuantities owned;
 
-    private final List<RecipeGroup> paths;
+    private final List<ChainResult> chainResults;
 
     /**
-     * The sum of the paths, so the headline figure always agrees with what is listed under it.
+     * The sum of the chainResults, so the headline figure always agrees with what is listed under it.
      */
     private final double totalXp;
 
+    /**
+     * Netted from the chainResults' own demand, for the same reason.
+     */
     private final SecondaryBalance secondaryBalance;
 
-    public HerbloreResult(ItemQuantities owned,
-                          List<RecipeGroup> paths,
-                          SecondaryBalance secondaryBalance) {
+    public HerbloreResult(ItemQuantities owned, List<ChainResult> chainResults) {
         this.owned = owned;
-        this.paths = List.copyOf(paths);
-        this.totalXp = this.paths.stream().mapToDouble(RecipeGroup::getXp).sum();
-        this.secondaryBalance = secondaryBalance;
+        this.chainResults = List.copyOf(chainResults);
+        this.totalXp = this.chainResults.stream().mapToDouble(ChainResult::getXp).sum();
+        this.secondaryBalance = SecondaryBalanceCalculator.netAgainstOwned(sumDemandOf(this.chainResults), owned);
+    }
+
+    private static ItemQuantities sumDemandOf(List<ChainResult> chainResults) {
+        ItemQuantities demanded = ItemQuantities.EMPTY;
+
+        for (ChainResult chainResult : chainResults) {
+            demanded = demanded.plus(chainResult.getSecondaryDemand());
+        }
+
+        return demanded;
     }
 }

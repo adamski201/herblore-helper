@@ -1,6 +1,5 @@
-package adamski.domain.calculators;
+package adamski.domain;
 
-import adamski.domain.models.Recipe;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -46,7 +45,7 @@ public final class RecipeGraph {
     }
 
     /**
-     * Everything this item can eventually become, which is what a row's picker offers. Intermediates
+     * Everything this item can eventually become, which is what the product picker offers. Intermediates
      * are included - stopping at an unfinished potion is a valid choice.
      */
     public Set<Integer> findItemsReachableFrom(int itemId) {
