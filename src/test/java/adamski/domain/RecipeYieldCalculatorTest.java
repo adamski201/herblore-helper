@@ -27,13 +27,13 @@ public class RecipeYieldCalculatorTest {
 
     @Test
     public void oneRecipeRunsAsOftenAsItsPrimaryAllows() {
-        assertRun(RecipeYieldCalculator.calculate(PAIRS_TO_FIVE, 9), PAIRS_TO_FIVE, 4.5);
+        assertRun(calculate(3, 9, PAIRS_TO_FIVE).get(0), PAIRS_TO_FIVE, 4.5);
     }
 
     @Test
     public void oneRecipeYieldsItsOutputQuantityPerRun() {
         // 9 of item 3 is 4.5 runs of a recipe making 2 at a time
-        assertEquals(9.0, RecipeYieldCalculator.calculate(PAIRS_TO_FIVE, 9).getOutputQuantity(), DELTA);
+        assertEquals(9.0, calculate(3, 9, PAIRS_TO_FIVE).get(0).getOutputQuantity(), DELTA);
     }
 
     @Test

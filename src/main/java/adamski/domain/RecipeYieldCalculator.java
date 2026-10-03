@@ -7,21 +7,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * What one recipe yields on what is available.
+ * How far one banked item gets when it is run through a chain of recipes.
  */
 final class RecipeYieldCalculator {
     private RecipeYieldCalculator() {
-    }
-
-    /**
-     * The only place a recipe's yield is worked out, so anything that modifies it - an alchemist's
-     * amulet adding a dose, a per-recipe setting - reaches the whole app by changing this.
-     *
-     * @param available how much of the recipe's primary there is, in 1-dose units
-     * @return how many times it runs, fractionally, and what that makes
-     */
-    public static RecipeRun calculate(Recipe recipe, double available) {
-        return new RecipeRun(recipe, available / recipe.getPrimary().getQuantity());
     }
 
     /**
@@ -47,7 +36,7 @@ final class RecipeYieldCalculator {
             final double held = available.getOrDefault(recipe.getPrimary().getItemId(), 0d);
             if (held == 0) continue;
 
-            final RecipeRun run = calculate(recipe, held);
+            final RecipeRun run = new RecipeRun(recipe, held / recipe.getPrimary().getQuantity());
 
             yields.add(run);
 

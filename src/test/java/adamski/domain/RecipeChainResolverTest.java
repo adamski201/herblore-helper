@@ -17,15 +17,17 @@ import static org.junit.Assert.assertTrue;
 /**
  * Synthetic recipes: 1 -> 2 -> 3 -> 4, with 3 also able to make 5, and a stranded 6 -> 7.
  */
-public class RecipeChainCalculatorTest {
+public class RecipeChainResolverTest {
     private static final Recipe ONE_TO_TWO = recipe(10, 1, 2);
     private static final Recipe TWO_TO_THREE = recipe(11, 2, 3);
     private static final Recipe THREE_TO_FOUR = recipe(12, 3, 4);
     private static final Recipe THREE_TO_FIVE = recipe(13, 3, 5);
     private static final Recipe SIX_TO_SEVEN = recipe(14, 6, 7);
 
-    private static final RecipeChainCalculator CALCULATOR = new RecipeChainCalculator(new RecipeGraph(
-            Arrays.asList(ONE_TO_TWO, TWO_TO_THREE, THREE_TO_FOUR, THREE_TO_FIVE, SIX_TO_SEVEN)));
+    private static final RecipeGraph GRAPH = new RecipeGraph(
+            Arrays.asList(ONE_TO_TWO, TWO_TO_THREE, THREE_TO_FOUR, THREE_TO_FIVE, SIX_TO_SEVEN));
+
+    private static final RecipeChainResolver RESOLVER = new RecipeChainResolver(GRAPH);
 
     @Test
     public void oneBankedItemIsOneChain() {
@@ -61,14 +63,31 @@ public class RecipeChainCalculatorTest {
 
     @Test
     public void anItemDownstreamOfTheChosenProductStrandsIntoItsOwnChain() {
-        final Map<Integer, Integer> chosen = new HashMap<>();
-        chosen.put(1, 2); // stop at item 2
-
-        final List<RecipeChain> chains = CALCULATOR.calculate(owned(1, 10, 3, 5), chosen);
+        // stop at item 2
+    final List<RecipeChain> chains = RESOLVER.resolve(owned(1, 10, 3, 5), stopAt(2));
 
         assertEquals(2, chains.size());
         assertEquals(2, chains.get(0).getProductItemId());
         assertEquals(3, chains.get(1).getRootItemId());
+    }
+
+    @Test
+    public void aChainCutWhereItsRootStandsProducesNothing() {
+        // the pile of item 1 has been used up, so the cut now lands on the item rooting the chain
+        assertTrue(RESOLVER.resolve(owned(2, 10), stopAt(2)).isEmpty());
+    }
+
+    @Test
+    public void anItemBelowACutThatHasBeenReachedRootsItsOwnChain() {
+        // the chain is cut at item 2 and the pile of item 1 is gone, so item 3 is left to itself
+        final List<RecipeChain> chains = RESOLVER.resolve(owned(2, 10, 3, 5), stopAt(2));
+
+        assertEquals(1, chains.size());
+        assertEquals(3, chains.get(0).getRootItemId());
+        assertEquals(4, chains.get(0).getProductItemId());
+        assertEquals(List.of(12), chains.get(0).getRecipes().stream()
+                .map(Recipe::getId)
+                .collect(Collectors.toList()));
     }
 
     @Test
@@ -78,10 +97,7 @@ public class RecipeChainCalculatorTest {
 
     @Test
     public void choosingTheProductChoosesTheChain() {
-        final Map<Integer, Integer> chosen = new HashMap<>();
-        chosen.put(1, 5);
-
-        final List<RecipeChain> chains = CALCULATOR.calculate(owned(1, 10), chosen);
+        final List<RecipeChain> chains = RESOLVER.resolve(owned(1, 10), choose(3, 13));
 
         assertEquals(List.of(10, 11, 13), chains.get(0).getRecipes().stream()
                 .map(Recipe::getId)
@@ -130,7 +146,21 @@ public class RecipeChainCalculatorTest {
     }
 
     private static List<RecipeChain> calculate(ItemQuantities owned) {
-        return CALCULATOR.calculate(owned, Collections.emptyMap());
+        return RESOLVER.resolve(owned, RecipeSelection.ALL_DEFAULT);
+    }
+
+    /**
+     * One item told to make nothing, so the chain ends there and anything below it is left over.
+     */
+    private static RecipeSelection stopAt(int itemId) {
+        return RecipeSelection.of(Map.of(itemId, RecipeSelection.STOP));
+    }
+
+    /**
+     * One item told to take a recipe other than the first the table offers.
+     */
+    private static RecipeSelection choose(int itemId, int recipeId) {
+        return RecipeSelection.of(Map.of(itemId, recipeId));
     }
 
     private static ItemQuantities owned(int... pairs) {

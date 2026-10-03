@@ -61,7 +61,7 @@ public class HerblorePanel extends PluginPanel implements HerbloreListener {
                 .sorted(Comparator.comparingDouble(ChainResult::getXp).reversed())
                 .forEach(chainResult -> {
                     sb.append(String.format("%7s  %s -> %s%n", abbreviate(chainResult.getXp()),
-                            name(RowLabels.nameFor(chainResult.getEntryItemId())), name(chainResult.getProductItemId())));
+                            name(RowLabels.nameFor(chainResult.getRootItemId())), name(chainResult.getProductItemId())));
 
                     sb.append(String.format("%7s    %s%n", abbreviate(chainResult.getOutputQuantity()), "made"));
 
@@ -69,7 +69,7 @@ public class HerblorePanel extends PluginPanel implements HerbloreListener {
                     for (ChainItemXp contribution : chainResult.getItemContributions()) {
                         if (contribution.getXp() == 0) continue;
                         sb.append(String.format("%7s    %s%n", abbreviate(contribution.getXp()),
-                                name(contribution.getEntryItemId())));
+                                name(contribution.getItemId())));
                     }
 
                     sb.append("         by recipe\n");

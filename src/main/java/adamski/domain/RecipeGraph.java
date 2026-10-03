@@ -64,8 +64,11 @@ public final class RecipeGraph {
     }
 
     /**
-     * The recipes turning one item into another, fewest steps first. A longer route is expressed by
-     * choosing an intermediate as a product in its own right, so the shortest is the one meant.
+     * The recipes turning one item into another, by the fewest steps. Where several routes reach the
+     * product - torstol makes super combat directly or by way of the unf vial - the shortest is the
+     * one a picked product means. The others are worth the same xp, which
+     * {@code HerbloreRecipesTest.everyRouteToAProductIsWorthTheSameXp} holds the table to, so
+     * nothing is lost by not offering them.
      *
      * @return the recipes to apply in order, empty if the product cannot be reached
      */
@@ -90,18 +93,43 @@ public final class RecipeGraph {
     }
 
     /**
-     * Where this item ends up when every step takes the first option the table offers. Stands in for
-     * the config until it lands.
+     * The route an item takes under a selection, one step at a time until an item is set to
+     * {@link RecipeSelection#STOP} or feeds nothing.
+     * <p>
+     * A step naming a recipe this item no longer offers is stale config, and falls back to the
+     * default rather than ending the chain - a chain must never vanish because the table moved
+     * under a saved choice.
+     *
+     * @return the recipes to apply in order, empty if this item makes nothing
      */
-    public int findDefaultProduct(int itemId) {
-        int item = itemId;
+    public List<Recipe> findRoute(int itemId, RecipeSelection selection) {
+        final List<Recipe> route = new ArrayList<>();
         final Set<Integer> walked = new HashSet<>();
 
-        while (walked.add(item) && !recipeOptionsFor(item).isEmpty()) {
-            item = recipeOptionsFor(item).get(0).getOutput().getItemId();
+        int item = itemId;
+        while (walked.add(item)) {
+            final Recipe next = findNextStep(item, selection);
+            if (next == null) break;
+
+            route.add(next);
+            item = next.getOutput().getItemId();
         }
 
-        return item;
+        return Collections.unmodifiableList(route);
+    }
+
+    private Recipe findNextStep(int itemId, RecipeSelection selection) {
+        final List<Recipe> options = recipeOptionsFor(itemId);
+        if (options.isEmpty()) return null;
+
+        final int chosen = selection.recipeIdFor(itemId);
+        if (chosen == RecipeSelection.STOP) return null;
+
+        for (Recipe option : options) {
+            if (option.getId() == chosen) return option;
+        }
+
+        return options.get(0);
     }
 
     /**

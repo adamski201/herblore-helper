@@ -46,7 +46,7 @@ public class ChainResultCalculatorTest {
 
         assertEquals(1, results.size());
         assertEquals(2, results.get(0).getItemContributions().size());
-        assertEquals(1, results.get(0).getEntryItemId());
+        assertEquals(1, results.get(0).getRootItemId());
         assertEquals(4, results.get(0).getProductItemId());
     }
 
@@ -55,7 +55,7 @@ public class ChainResultCalculatorTest {
         final List<ChainResult> results = calculate(owned(3, 1, 2, 1, 1, 1));
 
         assertEquals(List.of(1, 2, 3), results.get(0).getItemContributions().stream()
-                .map(ChainItemXp::getEntryItemId)
+                .map(ChainItemXp::getItemId)
                 .collect(Collectors.toList()));
     }
 
@@ -64,8 +64,8 @@ public class ChainResultCalculatorTest {
         final List<ChainResult> results = calculate(owned(1, 2, 6, 3));
 
         assertEquals(2, results.size());
-        assertEquals(1, results.get(0).getEntryItemId());
-        assertEquals(6, results.get(1).getEntryItemId());
+        assertEquals(1, results.get(0).getRootItemId());
+        assertEquals(6, results.get(1).getRootItemId());
     }
 
     @Test
@@ -152,8 +152,8 @@ public class ChainResultCalculatorTest {
 
         final ItemQuantities owned = ItemQuantities.counted(bank);
 
-        final List<RecipeChain> chains = new RecipeChainCalculator(new RecipeGraph(Recipes.all()))
-                .calculate(owned, Collections.emptyMap());
+        final List<RecipeChain> chains = new RecipeChainResolver(new RecipeGraph(Recipes.all()))
+                .resolve(owned, RecipeSelection.ALL_DEFAULT);
 
         final List<Recipe> everyRecipe = chains.stream()
                 .flatMap(chain -> chain.getRecipes().stream())
@@ -167,7 +167,11 @@ public class ChainResultCalculatorTest {
                 .mapToDouble(ChainResult::getXp)
                 .sum();
 
-        assertEquals(BankedXpCalculator.calculate(ungrouped).getTotal(), grouped, 0.0001);
+        final double ungroupedXp = ungrouped.stream()
+                .mapToDouble(run -> run.getRuns() * run.getRecipe().getXp())
+                .sum();
+
+        assertEquals(ungroupedXp, grouped, 0.0001);
     }
 
     private static List<ChainResult> calculate(ItemQuantities owned) {
