@@ -2,8 +2,10 @@ package adamski.app;
 
 import adamski.data.Recipes;
 import adamski.domain.Recipe;
-import adamski.domain.RecipeChainCalculator;
+import adamski.domain.RecipeChainResolver;
+import adamski.domain.RecipeSelection;
 import adamski.domain.RecipeGraph;
+import adamski.domain.RecipeSelector;
 import adamski.domain.ChainResultCalculator;
 import adamski.domain.ItemQuantities;
 import adamski.domain.ItemSource;
@@ -13,7 +15,6 @@ import lombok.extern.slf4j.Slf4j;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,12 +30,6 @@ public class HerbloreApp {
     private static final Set<ItemSource> SOURCES =
             EnumSet.of(ItemSource.Bank, ItemSource.PotionStorage, ItemSource.SeedVault);
 
-    /**
-     * The chosen product per chain, keyed by the chain's root item. Empty until config lands, so
-     * every chain takes its default.
-     */
-    private final Map<Integer, Integer> productByItem = new HashMap<>();
-
     private final List<HerbloreListener> listeners = new CopyOnWriteArrayList<>();
 
     private final HerbloreStore store;
@@ -46,7 +41,9 @@ public class HerbloreApp {
     @Getter
     private List<Recipe> recipes;
 
-    private RecipeChainCalculator chainCalculator;
+    private RecipeChainResolver chainResolver;
+
+    private RecipeSelector selector;
 
     @Getter
     private volatile HerbloreResult result;
@@ -57,16 +54,30 @@ public class HerbloreApp {
         adoptRecipes(Recipes.all());
     }
 
-    public void addListener(HerbloreListener listener) {
-        listeners.add(listener);
+    /**
+     * Points one chain at a product and republishes against what is already held.
+     * <p>
+     * Nothing is published until a source has been read, so a selection made before the first bank
+     * read is remembered and takes effect when that read arrives.
+     *
+     * @param rootItemId    the item this chain starts from, as carried by the chain result
+     * @param productItemId what it should end at, or {@link RecipeSelection#DEFAULT} for its default
+     */
+    public void selectProduct(int rootItemId, int productItemId) {
+        var newSelection = selector.select(store.selection(), rootItemId, productItemId);
+        var selectionChanged = store.updateSelection(newSelection);
+
+        if (!selectionChanged) return;
+
+        log.debug("item {} set to make item {}", rootItemId, productItemId);
+        if (result == null) return;
+
+        result = recalculate();
+        publishResult(result);
     }
 
-    public void removeListener(HerbloreListener listener) {
-        listeners.remove(listener);
-    }
-
-    public void sourcesUpdated(Map<ItemSource, ItemQuantities> changed) {
-        final var delta = store.updateState(changed);
+    public void updateItems(Map<ItemSource, ItemQuantities> changed) {
+        final var delta = store.updateItems(changed);
         if (delta.isEmpty()) return;
 
         log.debug("sources changed: {}", delta.keySet());
@@ -75,17 +86,28 @@ public class HerbloreApp {
         publishResult(result);
     }
 
+    public void addListener(HerbloreListener listener) {
+        listeners.add(listener);
+    }
+
+    public void removeListener(HerbloreListener listener) {
+        listeners.remove(listener);
+    }
+
     private void adoptRecipes(List<Recipe> recipes) {
         this.recipes = List.copyOf(recipes);
-        this.chainCalculator = new RecipeChainCalculator(new RecipeGraph(this.recipes));
+
+        final RecipeGraph graph = new RecipeGraph(this.recipes);
+        this.chainResolver = new RecipeChainResolver(graph);
+        this.selector = new RecipeSelector(graph);
     }
 
     private HerbloreResult recalculate() {
         // Gather all owned items across item sources e.g. bank, seed vault
-        final var ownedItems = mergeSources(store.getState());
+        final var ownedItems = mergeSources(store.itemsBySource());
 
         // Determine which recipe chains will be used (based on product selection)
-        final var recipeChains = chainCalculator.calculate(ownedItems, productByItem);
+        final var recipeChains = chainResolver.resolve(ownedItems, store.selection());
 
         // Calculate the XP & quantity result for each chain
         final var chainResults = ChainResultCalculator.calculate(recipeChains, ownedItems);

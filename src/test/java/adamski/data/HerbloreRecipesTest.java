@@ -7,8 +7,10 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -73,6 +75,60 @@ public class HerbloreRecipesTest {
             assertTrue("item " + itemId + " is reached by independent routes and feeds "
                     + graph.recipeOptionsFor(itemId), graph.recipeOptionsFor(itemId).isEmpty());
         });
+    }
+
+    /**
+     * Picking a product writes the shortest route to it, and a longer route cannot be picked unless
+     * it is already the default. That only loses nothing while every route to a product is worth the
+     * same xp - torstol to super combat direct, or by way of the unf vial, is 150 either way.
+     */
+    @Test
+    public void everyRouteToAProductIsWorthTheSameXp() {
+        final RecipeGraph graph = new RecipeGraph(Recipes.all());
+
+        for (int from : everyItemInTheTable()) {
+            final Map<Integer, Map<List<Integer>, Double>> xpByRouteByProduct = new LinkedHashMap<>();
+            walkEveryRoute(graph, from, 1, 0, new ArrayList<>(), xpByRouteByProduct);
+
+            xpByRouteByProduct.forEach((product, xpByRoute) -> {
+                final double first = xpByRoute.values().iterator().next();
+
+                for (double xp : xpByRoute.values()) {
+                    assertEquals("item " + from + " reaches " + product + " by routes worth " + xpByRoute,
+                            first, xp, 1e-6);
+                }
+            });
+        }
+    }
+
+    /**
+     * Records the xp of every route out of an item, per one of that item. The table is acyclic, as
+     * RecipeGraph enforces, so this terminates.
+     */
+    private static void walkEveryRoute(RecipeGraph graph, int item, double held, double xp, List<Integer> route,
+                                       Map<Integer, Map<List<Integer>, Double>> xpByRouteByProduct) {
+        for (Recipe recipe : graph.recipeOptionsFor(item)) {
+            final double runs = held / recipe.getPrimary().getQuantity();
+            final double xpSoFar = xp + runs * recipe.getXp();
+            final int output = recipe.getOutput().getItemId();
+
+            final List<Integer> next = new ArrayList<>(route);
+            next.add(recipe.getId());
+
+            xpByRouteByProduct.computeIfAbsent(output, k -> new LinkedHashMap<>()).put(next, xpSoFar);
+            walkEveryRoute(graph, output, runs * recipe.getOutput().getQuantity(), xpSoFar, next, xpByRouteByProduct);
+        }
+    }
+
+    private static Set<Integer> everyItemInTheTable() {
+        final Set<Integer> items = new LinkedHashSet<>();
+
+        for (Recipe recipe : Recipes.all()) {
+            items.add(recipe.getPrimary().getItemId());
+            items.add(recipe.getOutput().getItemId());
+        }
+
+        return items;
     }
 
     /**

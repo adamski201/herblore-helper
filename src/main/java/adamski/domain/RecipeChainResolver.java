@@ -6,7 +6,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -16,18 +15,18 @@ import java.util.Set;
  * cannot reach the chain's product roots a chain of its own - which is what separates banked
  * cadantine blood vials from the cadantine going to super defence.
  */
-public final class RecipeChainCalculator {
+public final class RecipeChainResolver {
     private final RecipeGraph graph;
 
-    public RecipeChainCalculator(RecipeGraph graph) {
+    public RecipeChainResolver(RecipeGraph graph) {
         this.graph = graph;
     }
 
     /**
-     * @param owned         what the player holds
-     * @param productByItem the chosen product per chain, keyed by the chain's root item
+     * @param owned     what the player holds
+     * @param selection which recipe each item feeds
      */
-    public List<RecipeChain> calculate(ItemQuantities owned, Map<Integer, Integer> productByItem) {
+    public List<RecipeChain> resolve(ItemQuantities owned, RecipeSelection selection) {
         final List<Integer> banked = new ArrayList<>(owned.itemIds());
 
         // Banked items sorted by recipe dependency order (i.e. maturity)
@@ -40,11 +39,10 @@ public final class RecipeChainCalculator {
         for (Integer itemId : banked) {
             if (claimed.contains(itemId)) continue;
 
-            final int product = productByItem.getOrDefault(itemId, graph.findDefaultProduct(itemId));
-            final List<Recipe> route = graph.findShortestRoute(itemId, product);
+            final List<Recipe> route = graph.findRoute(itemId, selection);
             if (route.isEmpty()) continue;
 
-            chains.add(new RecipeChain(route));
+            chains.add(new RecipeChain(route, new ArrayList<>(graph.findItemsReachableFrom(itemId))));
 
             claimed.add(itemId);
             for (Recipe recipe : route) {

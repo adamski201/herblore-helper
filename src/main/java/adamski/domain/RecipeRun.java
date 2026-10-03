@@ -3,8 +3,7 @@ package adamski.domain;
 import lombok.Value;
 
 /**
- * A recipe and how many times the player's items allow it to be run. Fractional - see
- * RecipeYieldCalculator for why.
+ * A recipe and how many times it can be run (according to owned items).
  */
 @Value
 public class RecipeRun {
@@ -12,22 +11,13 @@ public class RecipeRun {
     double runs;
 
     /**
-     * How much of the recipe's output this makes, in 1-dose units. Resolved once, when the run is
-     * made, rather than recomputed by every reader - so a per-recipe dose bonus such as the
-     * alchemist's amulet only has to reach {@link adamski.domain.RecipeYieldCalculator}.
+     * What those runs make, in 1-dose units. Resolved here rather than recomputed by every reader.
      */
     double outputQuantity;
 
-    /**
-     * The recipe's own yield, with nothing modifying it.
-     */
     public RecipeRun(Recipe recipe, double runs) {
-        this(recipe, runs, runs * recipe.getOutput().getQuantity());
-    }
-
-    public RecipeRun(Recipe recipe, double runs, double outputQuantity) {
         this.recipe = recipe;
         this.runs = runs;
-        this.outputQuantity = outputQuantity;
+        this.outputQuantity = runs * recipe.getOutput().getQuantity();
     }
 }

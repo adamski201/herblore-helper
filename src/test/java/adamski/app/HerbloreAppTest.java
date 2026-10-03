@@ -1,9 +1,8 @@
 package adamski.app;
 
-import adamski.domain.Ingredient;
 import adamski.domain.ItemQuantities;
 import adamski.domain.ItemSource;
-import adamski.domain.Recipe;
+import adamski.domain.RecipeSelection;
 import adamski.domain.ChainResult;
 import adamski.domain.ChainItemXp;
 import adamski.domain.ChainRecipeXp;
@@ -22,6 +21,7 @@ import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -171,12 +171,12 @@ public class HerbloreAppTest {
         bank.put(ItemID.UNIDENTIFIED_RANARR, 40);
         bank.put(ItemID.RANARRVIAL, 25);
 
-        app.sourcesUpdated(source(ItemSource.Bank, bank));
+        app.updateItems(source(ItemSource.Bank, bank));
 
         final ChainResult ranarr = app.getResult().getChainResults().get(0);
 
         assertEquals(Arrays.asList(ItemID.RANARR_SEED, ItemID.UNIDENTIFIED_RANARR, ItemID.RANARRVIAL),
-                ranarr.getItemContributions().stream().map(ChainItemXp::getEntryItemId).collect(Collectors.toList()));
+                ranarr.getItemContributions().stream().map(ChainItemXp::getItemId).collect(Collectors.toList()));
     }
 
     @Test
@@ -184,10 +184,10 @@ public class HerbloreAppTest {
         final Map<Integer, Integer> bank = items(ItemID.CADANTINE, 10);
         bank.put(ItemID.CADANTINE_BLOODVIAL, 4);
 
-        app.sourcesUpdated(source(ItemSource.Bank, bank));
+        app.updateItems(source(ItemSource.Bank, bank));
 
         final Map<Integer, Integer> entryByTerminal = app.getResult().getChainResults().stream()
-                .collect(Collectors.toMap(ChainResult::getProductItemId, ChainResult::getEntryItemId));
+                .collect(Collectors.toMap(ChainResult::getProductItemId, ChainResult::getRootItemId));
 
         assertEquals(Integer.valueOf(ItemID.CADANTINE), entryByTerminal.get(ItemID._1DOSE2DEFENSE));
         assertEquals(Integer.valueOf(ItemID.CADANTINE_BLOODVIAL), entryByTerminal.get(ItemID._1DOSEBASTION));
@@ -196,7 +196,7 @@ public class HerbloreAppTest {
     @Test
     public void aRowKnowsHowMuchItMakesAndWhatItCosts() {
         // One grimy ranarr runs r44 once, making 3 doses of defence potion from 1 white berry
-        app.sourcesUpdated(source(ItemSource.Bank, items(ItemID.UNIDENTIFIED_RANARR, 1)));
+        app.updateItems(source(ItemSource.Bank, items(ItemID.UNIDENTIFIED_RANARR, 1)));
 
         final ChainResult ranarr = app.getResult().getChainResults().get(0);
 
@@ -208,10 +208,10 @@ public class HerbloreAppTest {
     @Test
     public void aChainIsOneRowEvenWhereItCrossesIntoAnotherPotion() {
         // Harralander runs to stat restore and on into guthix balance - one chain, one result
-        app.sourcesUpdated(source(ItemSource.Bank, items(ItemID.UNIDENTIFIED_HARRALANDER, 20)));
+        app.updateItems(source(ItemSource.Bank, items(ItemID.UNIDENTIFIED_HARRALANDER, 20)));
 
         assertEquals(1, app.getResult().getChainResults().size());
-        assertEquals(ItemID.UNIDENTIFIED_HARRALANDER, app.getResult().getChainResults().get(0).getEntryItemId());
+        assertEquals(ItemID.UNIDENTIFIED_HARRALANDER, app.getResult().getChainResults().get(0).getRootItemId());
     }
 
     @Test
@@ -219,10 +219,10 @@ public class HerbloreAppTest {
         final Map<Integer, Integer> bank = items(ItemID.UNIDENTIFIED_HARRALANDER, 20);
         bank.put(ItemID.BRUT_CAVIAR, 10);
 
-        app.sourcesUpdated(source(ItemSource.Bank, bank));
+        app.updateItems(source(ItemSource.Bank, bank));
 
         final Set<Integer> entries = app.getResult().getChainResults().stream()
-                .map(ChainResult::getEntryItemId)
+                .map(ChainResult::getRootItemId)
                 .collect(Collectors.toSet());
 
         assertTrue(entries.contains(ItemID.UNIDENTIFIED_HARRALANDER));
@@ -232,7 +232,7 @@ public class HerbloreAppTest {
 
     @Test
     public void seedVaultCounts() {
-        app.sourcesUpdated(source(ItemSource.SeedVault, items(ItemID.RANARR_SEED, 1)));
+        app.updateItems(source(ItemSource.SeedVault, items(ItemID.RANARR_SEED, 1)));
 
         assertEquals(8 * GRIMY_RANARR_XP, app.getResult().getTotalXp(), DELTA);
     }
@@ -240,7 +240,7 @@ public class HerbloreAppTest {
     @Test
     public void inventoryDoesNotCount() {
         // Still open whether banking a herb run should read as a gain or as net zero
-        app.sourcesUpdated(source(ItemSource.Inventory, items(ItemID.UNIDENTIFIED_RANARR, 1)));
+        app.updateItems(source(ItemSource.Inventory, items(ItemID.UNIDENTIFIED_RANARR, 1)));
 
         assertEquals(0, app.getResult().getTotalXp(), DELTA);
     }
@@ -251,59 +251,157 @@ public class HerbloreAppTest {
         snapshot.put(ItemSource.Bank, ItemQuantities.counted(items(ItemID.UNIDENTIFIED_RANARR, 1)));
         snapshot.put(ItemSource.PotionStorage, ItemQuantities.counted(items(ItemID.UNIDENTIFIED_RANARR, 1)));
 
-        app.sourcesUpdated(snapshot);
+        app.updateItems(snapshot);
 
         assertEquals(2 * GRIMY_RANARR_XP, app.getResult().getTotalXp(), DELTA);
     }
 
     @Test
     public void resultCoversEverySourceSeenSoFarNotJustTheChangedOne() {
-        app.sourcesUpdated(source(ItemSource.Bank, items(ItemID.UNIDENTIFIED_RANARR, 1)));
-        app.sourcesUpdated(source(ItemSource.PotionStorage, items(ItemID.UNIDENTIFIED_RANARR, 1)));
+        app.updateItems(source(ItemSource.Bank, items(ItemID.UNIDENTIFIED_RANARR, 1)));
+        app.updateItems(source(ItemSource.PotionStorage, items(ItemID.UNIDENTIFIED_RANARR, 1)));
 
         assertEquals(2 * GRIMY_RANARR_XP, app.getResult().getTotalXp(), DELTA);
     }
 
     @Test
     public void unchangedUpdateLeavesTheResultAlone() {
-        app.sourcesUpdated(source(ItemSource.Bank, items(ItemID.UNIDENTIFIED_RANARR, 1)));
+        app.updateItems(source(ItemSource.Bank, items(ItemID.UNIDENTIFIED_RANARR, 1)));
         final HerbloreResult first = app.getResult();
 
-        app.sourcesUpdated(source(ItemSource.Bank, items(ItemID.UNIDENTIFIED_RANARR, 1)));
+        app.updateItems(source(ItemSource.Bank, items(ItemID.UNIDENTIFIED_RANARR, 1)));
 
         assertEquals(first, app.getResult());
     }
 
     @Test
-    public void swappingTheRecipeTableRepublishesAgainstWhatIsHeld() {
-        app.sourcesUpdated(source(ItemSource.Bank, items(ItemID.UNIDENTIFIED_RANARR, 2)));
-        assertEquals(2 * GRIMY_RANARR_XP, app.getResult().getTotalXp(), DELTA);
+    public void selectingAProductReroutesTheChain() {
+        final ChainResult before = bank(items(ItemID.UNIDENTIFIED_AVANTOE, 1)).getChainResults().get(0);
+        assertEquals(ItemID._1DOSEFISHERSPOTION, before.getProductItemId());
 
-        app.useRecipes(withXpDoubled(app.getRecipes()));
+        app.selectProduct(before.getRootItemId(), ItemID._1DOSEHUNTING);
 
-        assertEquals(2 * 2 * GRIMY_RANARR_XP, app.getResult().getTotalXp(), DELTA);
+        final ChainResult after = app.getResult().getChainResults().get(0);
+        assertEquals(ItemID._1DOSEHUNTING, after.getProductItemId());
+        assertNotEquals(before.getXp(), after.getXp(), DELTA);
+    }
+
+    /**
+     * The whole point of storing a step against an item rather than a destination against a chain.
+     * The chain is rooted at the seed while there are seeds and at the grimy herb once they are
+     * gone, but the step that does the choosing sits on the unf vial and never moves.
+     */
+    @Test
+    public void aSelectionSurvivesTheBankDraining() {
+        final ChainResult withSeeds = bank(items(ItemID.AVANTOE_SEED, 10)).getChainResults().get(0);
+        assertEquals(ItemID.AVANTOE_SEED, withSeeds.getRootItemId());
+
+        app.selectProduct(withSeeds.getRootItemId(), ItemID._1DOSEHUNTING);
+
+        final ChainResult drained = bank(items(ItemID.UNIDENTIFIED_AVANTOE, 20)).getChainResults().get(0);
+
+        assertEquals(ItemID.UNIDENTIFIED_AVANTOE, drained.getRootItemId());
+        assertEquals("the choice outlives the item that made it", ItemID._1DOSEHUNTING, drained.getProductItemId());
+    }
+
+    /**
+     * Super antifire and extended antifire both end at extended super antifire but neither can
+     * become the other, so they are two chains and must not share a choice.
+     */
+    @Test
+    public void independentChainsEndingAtOneProductAreKeptApart() {
+        final Map<Integer, Integer> both = items(ItemID._1DOSE3ANTIDRAGON, 4);
+        both.put(ItemID._1DOSE2ANTIDRAGON, 4);
+
+        final List<ChainResult> chains = bank(both).getChainResults();
+
+        assertEquals(2, chains.size());
+        assertEquals(chains.get(0).getProductItemId(), chains.get(1).getProductItemId());
+        assertNotEquals(chains.get(0).getRootItemId(), chains.get(1).getRootItemId());
+    }
+
+    /**
+     * Torstol reaches super combat directly and through the unf vial, so choosing it on the torstol
+     * row leaves banked torstol vials off the route entirely. They root a row of their own and take
+     * their own choice - which one selection per chain could not express, because both rows sit on
+     * the same chain.
+     */
+    @Test
+    public void twoRowsOnOneHerbCanBothBeSetToTheSameProduct() {
+        final Map<Integer, Integer> both = items(ItemID.TORSTOL, 10);
+        both.put(ItemID.TORSTOLVIAL, 10);
+        bank(both);
+
+        app.selectProduct(ItemID.TORSTOL, ItemID._1DOSE2COMBAT);
+        app.selectProduct(ItemID.TORSTOLVIAL, ItemID._1DOSE2COMBAT);
+
+        final List<ChainResult> chains = app.getResult().getChainResults();
+
+        assertEquals(2, chains.size());
+        assertEquals(ItemID._1DOSE2COMBAT, chains.get(0).getProductItemId());
+        assertEquals(ItemID._1DOSE2COMBAT, chains.get(1).getProductItemId());
+    }
+
+    /**
+     * Stopping the seed row at the clean herb leaves banked unf vials below the cut. They root a row
+     * of their own and hold a choice the row above cannot overwrite.
+     */
+    @Test
+    public void aRowBelowACutHoldsAChoiceOfItsOwn() {
+        final Map<Integer, Integer> both = items(ItemID.AVANTOE_SEED, 10);
+        both.put(ItemID.AVANTOEVIAL, 100);
+        bank(both);
+
+        app.selectProduct(ItemID.AVANTOE_SEED, ItemID.AVANTOE);
+        app.selectProduct(ItemID.AVANTOEVIAL, ItemID._1DOSEHUNTING);
+
+        final List<ChainResult> chains = app.getResult().getChainResults();
+
+        assertEquals(2, chains.size());
+        assertEquals(ItemID.AVANTOE, chains.get(0).getProductItemId());
+        assertEquals(ItemID._1DOSEHUNTING, chains.get(1).getProductItemId());
+    }
+
+    /**
+     * A product the row cannot reach names no route, so there is nothing to store.
+     */
+    @Test
+    public void selectingAnUnreachableProductChangesNothing() {
+        final ChainResult before = bank(items(ItemID.UNIDENTIFIED_AVANTOE, 1)).getChainResults().get(0);
+
+        app.selectProduct(ItemID.UNIDENTIFIED_AVANTOE, ItemID.AVANTOE_SEED);
+
+        assertEquals(before, app.getResult().getChainResults().get(0));
     }
 
     @Test
-    public void aTableSwappedInBeforeTheFirstReadPublishesNothing() {
-        app.useRecipes(withXpDoubled(app.getRecipes()));
+    public void aSelectionMadeBeforeAnySourceIsReadPublishesNothing() {
+        app.selectProduct(ItemID.AVANTOE_SEED, ItemID._1DOSEHUNTING);
 
         assertNull(app.getResult());
     }
 
-    /**
-     * Stands in for a modifier - the app only cares that the numbers differ, not why.
-     */
-    private static List<Recipe> withXpDoubled(List<Recipe> recipes) {
-        return recipes.stream()
-                .map(recipe -> new Recipe(recipe.getId(), recipe.getPrimary(),
-                        recipe.getSecondaries().toArray(new Ingredient[0]), recipe.getOutput(),
-                        recipe.getTag(), recipe.getXp() * 2, recipe.getLevel()))
-                .collect(Collectors.toList());
+    @Test
+    public void chainsCarryTheProductsTheyCouldEndAtInstead() {
+        final ChainResult chain = bank(items(ItemID.UNIDENTIFIED_AVANTOE, 1)).getChainResults().get(0);
+
+        assertTrue(chain.getProductOptions().contains(ItemID._1DOSEHUNTING));
+        assertTrue("intermediates count - stopping at an unf is a valid choice",
+                chain.getProductOptions().contains(ItemID.AVANTOEVIAL));
+    }
+
+    @Test
+    public void puttingAChainBackOnItsDefaultRestoresTheDefaultProduct() {
+        final ChainResult chain = bank(items(ItemID.UNIDENTIFIED_AVANTOE, 1)).getChainResults().get(0);
+
+        app.selectProduct(chain.getRootItemId(), ItemID._1DOSEHUNTING);
+        app.selectProduct(chain.getRootItemId(), RecipeSelection.DEFAULT);
+
+        assertEquals(ItemID._1DOSEFISHERSPOTION, app.getResult().getChainResults().get(0).getProductItemId());
     }
 
     private HerbloreResult bank(Map<Integer, Integer> bankItems) {
-        app.sourcesUpdated(source(ItemSource.Bank, bankItems));
+        app.updateItems(source(ItemSource.Bank, bankItems));
         return app.getResult();
     }
 
@@ -317,7 +415,7 @@ public class HerbloreAppTest {
     }
 
     private SecondaryBalance bankBalance(Map<Integer, Integer> bankItems) {
-        app.sourcesUpdated(source(ItemSource.Bank, bankItems));
+        app.updateItems(source(ItemSource.Bank, bankItems));
         return app.getResult().getSecondaryBalance();
     }
 

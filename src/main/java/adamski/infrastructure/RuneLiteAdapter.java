@@ -17,7 +17,6 @@ import net.runelite.client.game.ItemManager;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
@@ -75,7 +74,7 @@ public class RuneLiteAdapter {
 
         if (pending.isEmpty()) return;
 
-        app.sourcesUpdated(new EnumMap<>(pending));
+        app.updateItems(new EnumMap<>(pending));
         pending.clear();
     }
 
@@ -94,7 +93,7 @@ public class RuneLiteAdapter {
             if (comp.getPlaceholderTemplateId() != -1) continue;
 
             final var unnotedId = itemManager.canonicalize(id); // Merge noted items into unnoted form
-            final var doses = item.getQuantity() * PotionDoses.doses(unnotedId); // Calculate doses
+            final var doses = item.getQuantity() * PotionDoses.doses(unnotedId);
             final var canonicalId = PotionDoses.canonicalId(unnotedId); // Reduce dose variants to 1-dose units
             if (!Recipes.isRelevantItem(canonicalId)) continue; // Filter for domain-relevant items
 

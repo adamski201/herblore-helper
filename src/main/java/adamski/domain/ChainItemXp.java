@@ -7,14 +7,13 @@ import lombok.ToString;
 import java.util.List;
 
 /**
- * What one item contributes after entering a chain. Holding ranarr seeds, grimy ranarr and ranarr unf
- * makes three item contributions to the ranarr chain.
+ * One item's contribution to a recipe chain.
  */
 @Getter
 @EqualsAndHashCode
 @ToString
 public final class ChainItemXp {
-    private final int entryItemId;
+    private final int itemId;
 
     /**
      * How much entered, in 1-dose units.
@@ -25,8 +24,8 @@ public final class ChainItemXp {
 
     private final double xp;
 
-    public ChainItemXp(int entryItemId, double quantity, List<RecipeRun> runs, double xp) {
-        this.entryItemId = entryItemId;
+    public ChainItemXp(int itemId, double quantity, List<RecipeRun> runs, double xp) {
+        this.itemId = itemId;
         this.quantity = quantity;
         this.runs = List.copyOf(runs);
         this.xp = xp;

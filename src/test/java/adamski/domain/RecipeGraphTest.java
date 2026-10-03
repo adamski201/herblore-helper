@@ -5,12 +5,14 @@ import net.runelite.api.gameval.ItemID;
 import org.junit.Test;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -97,13 +99,8 @@ public class RecipeGraphTest {
 
     @Test
     public void theDefaultProductIsWhereFirstOptionsLead() {
-        assertEquals(ItemID._1DOSE1DEFENSE, GRAPH.findDefaultProduct(ItemID.RANARR_SEED));
-        assertEquals(ItemID._1DOSEBASTION, GRAPH.findDefaultProduct(ItemID.CADANTINE_BLOODVIAL));
-    }
-
-    @Test
-    public void anItemWithNoRecipesIsItsOwnDefault() {
-        assertEquals(ItemID._1DOSE1DEFENSE, GRAPH.findDefaultProduct(ItemID._1DOSE1DEFENSE));
+        assertEquals(ItemID._1DOSE1DEFENSE, defaultProductOf(ItemID.RANARR_SEED));
+        assertEquals(ItemID._1DOSEBASTION, defaultProductOf(ItemID.CADANTINE_BLOODVIAL));
     }
 
     @Test
@@ -118,6 +115,113 @@ public class RecipeGraphTest {
     @Test
     public void anItemTheTableNeverMentionsHasNoMaturity() {
         assertEquals(Integer.MAX_VALUE, GRAPH.maturityOf(ItemID.ABYSSAL_WHIP));
+    }
+
+    @Test
+    public void aRouteFollowsTheFirstOptionUntilNothingIsMade() {
+        final List<Recipe> route = GRAPH.findRoute(ItemID.AVANTOE_SEED, RecipeSelection.ALL_DEFAULT);
+
+        assertEquals(ItemID.AVANTOE_SEED, route.get(0).getPrimary().getItemId());
+        for (Recipe step : route) {
+            assertEquals(GRAPH.recipeOptionsFor(step.getPrimary().getItemId()).get(0), step);
+        }
+        assertTrue(GRAPH.recipeOptionsFor(route.get(route.size() - 1).getOutput().getItemId()).isEmpty());
+    }
+
+    @Test
+    public void aChosenStepIsTakenInsteadOfTheFirstOption() {
+        final Recipe notTheDefault = GRAPH.recipeOptionsFor(ItemID.AVANTOEVIAL).get(1);
+        final RecipeSelection selection =
+                RecipeSelection.of(Map.of(ItemID.AVANTOEVIAL, notTheDefault.getId()));
+
+        final List<Recipe> route = GRAPH.findRoute(ItemID.AVANTOE_SEED, selection);
+
+        assertEquals(notTheDefault, stepFrom(route, ItemID.AVANTOEVIAL));
+    }
+
+    /**
+     * The step that does the choosing sits on the unf vial, so it applies wherever the route starts.
+     */
+    @Test
+    public void aChosenStepAppliesFromAnyRootAboveIt() {
+        final Recipe notTheDefault = GRAPH.recipeOptionsFor(ItemID.AVANTOEVIAL).get(1);
+        final RecipeSelection selection =
+                RecipeSelection.of(Map.of(ItemID.AVANTOEVIAL, notTheDefault.getId()));
+
+        for (int root : List.of(ItemID.AVANTOE_SEED, ItemID.UNIDENTIFIED_AVANTOE, ItemID.AVANTOE)) {
+            assertEquals("root " + root, notTheDefault,
+                    stepFrom(GRAPH.findRoute(root, selection), ItemID.AVANTOEVIAL));
+        }
+    }
+
+    /**
+     * Only the chosen step is pinned - the route carries on past it by first option, which is why
+     * choosing a destination has to stop the chain at that destination as well.
+     */
+    @Test
+    public void aRouteCarriesOnPastAChosenStep() {
+        final Recipe notTheDefault = GRAPH.recipeOptionsFor(ItemID.AVANTOEVIAL).get(1);
+        final RecipeSelection selection =
+                RecipeSelection.of(Map.of(ItemID.AVANTOEVIAL, notTheDefault.getId()));
+
+        final List<Recipe> route = GRAPH.findRoute(ItemID.AVANTOE_SEED, selection);
+
+        assertNotEquals(notTheDefault, route.get(route.size() - 1));
+        assertTrue(route.contains(notTheDefault));
+    }
+
+    private static int defaultProductOf(int itemId) {
+        final List<Recipe> route = GRAPH.findRoute(itemId, RecipeSelection.ALL_DEFAULT);
+        return route.get(route.size() - 1).getOutput().getItemId();
+    }
+
+    private static Recipe stepFrom(List<Recipe> route, int itemId) {
+        return route.stream()
+                .filter(recipe -> recipe.getPrimary().getItemId() == itemId)
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("no step out of item " + itemId + " in " + route));
+    }
+
+    @Test
+    public void aStoppedItemEndsTheRoute() {
+        final RecipeSelection selection =
+                RecipeSelection.of(Map.of(ItemID.AVANTOE, RecipeSelection.STOP));
+
+        final List<Recipe> route = GRAPH.findRoute(ItemID.AVANTOE_SEED, selection);
+
+        assertEquals(ItemID.AVANTOE, route.get(route.size() - 1).getOutput().getItemId());
+    }
+
+    /**
+     * A saved step naming a recipe the table no longer offers is stale config, and must not delete
+     * the chain out from under the user.
+     */
+    @Test
+    public void aStaleStepFallsBackToTheFirstOption() {
+        final RecipeSelection stale = RecipeSelection.of(Map.of(ItemID.AVANTOEVIAL, 99999));
+
+        assertEquals(GRAPH.findRoute(ItemID.AVANTOE_SEED, RecipeSelection.ALL_DEFAULT),
+                GRAPH.findRoute(ItemID.AVANTOE_SEED, stale));
+    }
+
+    @Test
+    public void anItemThatMakesNothingHasNoRoute() {
+        assertTrue(GRAPH.findRoute(ItemID._1DOSE1DEFENSE, RecipeSelection.ALL_DEFAULT).isEmpty());
+    }
+
+    /**
+     * Super antifire and extended antifire both end at extended super antifire, but neither can
+     * become the other - two chains that happen to share a product.
+     */
+    @Test
+    public void independentRoutesCanShareOneProduct() {
+        assertEquals(defaultProductOf(ItemID._1DOSE3ANTIDRAGON),
+                defaultProductOf(ItemID._1DOSE2ANTIDRAGON));
+
+        assertFalse(GRAPH.findItemsReachableFrom(ItemID._1DOSE3ANTIDRAGON)
+                .contains(ItemID._1DOSE2ANTIDRAGON));
+        assertFalse(GRAPH.findItemsReachableFrom(ItemID._1DOSE2ANTIDRAGON)
+                .contains(ItemID._1DOSE3ANTIDRAGON));
     }
 
     @Test(expected = IllegalStateException.class)
