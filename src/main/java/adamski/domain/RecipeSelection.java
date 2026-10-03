@@ -25,12 +25,15 @@ public final class RecipeSelection {
     }
 
     /**
-     * @param recipeByItemId item to the recipe it feeds, or {@link #STOP}.
+     * @param recipeByItemId item to the recipe it feeds, {@link #STOP}, or {@link #DEFAULT}. A
+     *                       {@link #DEFAULT} entry is dropped, the same as leaving the item out, so
+     *                       two selections that mean the same thing are equal.
      */
     public static RecipeSelection of(Map<Integer, Integer> recipeByItemId) {
-        return recipeByItemId.isEmpty()
-                ? ALL_DEFAULT
-                : new RecipeSelection(new HashMap<>(recipeByItemId));
+        final Map<Integer, Integer> chosen = new HashMap<>(recipeByItemId);
+        chosen.values().removeIf(recipeId -> recipeId == DEFAULT);
+
+        return chosen.isEmpty() ? ALL_DEFAULT : new RecipeSelection(chosen);
     }
 
     /**
@@ -40,14 +43,7 @@ public final class RecipeSelection {
      */
     public RecipeSelection with(Map<Integer, Integer> recipeByItemId) {
         final Map<Integer, Integer> merged = new HashMap<>(this.recipeByItemId);
-
-        recipeByItemId.forEach((itemId, recipeId) -> {
-            if (recipeId == DEFAULT) {
-                merged.remove(itemId);
-            } else {
-                merged.put(itemId, recipeId);
-            }
-        });
+        merged.putAll(recipeByItemId);
 
         return of(merged);
     }

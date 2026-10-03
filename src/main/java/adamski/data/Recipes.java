@@ -184,8 +184,10 @@ public final class Recipes {
                     new Ingredient(ItemID.SANFEW_SALVE_1_DOSE, 4), "potion", 192f, 0),
             new Recipe(85, new Ingredient(ItemID.TORSTOL, 1), new Ingredient[]{new Ingredient(ItemID.ANTIVENOM1, 4)},
                     new Ingredient(ItemID.ANTIVENOM_1, 4), "potion", 125f, 0),
-            new Recipe(86, new Ingredient(ItemID.TORSTOLVIAL, 1), new Ingredient[]{new Ingredient(ItemID.ANTIVENOM1, 4)},
-                    new Ingredient(ItemID.ANTIVENOM_1, 4), "potion", 125f, 0),
+            // r86, torstol unf -> anti-venom+, is left out on purpose. With it, a torstol row and a
+            // torstol unf row could both reach anti-venom+ and carry on to r91 together, sharing a
+            // recipe and splitting one item's step between them. Banked unf vials still make super
+            // combat, which is worth more. See HerbloreRecipesTest.whereTwoRoutesMeetNothingFollows.
             new Recipe(87, new Ingredient(ItemID._1DOSE2ENERGY, 1), new Ingredient[]{new Ingredient(ItemID.AMYLASE, 1)},
                     new Ingredient(ItemID._1DOSESTAMINA, 1), "potion", 25.5f, 0),
             new Recipe(88, new Ingredient(ItemID._1DOSE2ENERGY, 1), new Ingredient[]{new Ingredient(ItemID.YELLOW_FIN, 1)},

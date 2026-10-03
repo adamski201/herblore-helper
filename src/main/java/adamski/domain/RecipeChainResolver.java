@@ -11,9 +11,10 @@ import java.util.Set;
 /**
  * Works out which chains are produced from owned items.
  * <p>
- * The least mature banked item roots a chain and everything along it joins that chain. Anything that
- * cannot reach the chain's product roots a chain of its own - which is what separates banked
- * cadantine blood vials from the cadantine going to super defence.
+ * The least mature banked item roots a chain and everything on its chosen route joins that chain.
+ * Anything off that route roots a chain of its own - off the route, not unable to reach the product.
+ * Banked torstol unf roots its own chain when torstol goes straight to super combat, though it makes
+ * super combat too; it simply is not on the way.
  */
 public final class RecipeChainResolver {
     private final RecipeGraph graph;

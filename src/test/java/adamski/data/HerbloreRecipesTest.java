@@ -55,24 +55,29 @@ public class HerbloreRecipesTest {
     }
 
     /**
-     * Two chains may only meet at a dead end. Antifire makes both extended antifire and super
-     * antifire, and both make extended super antifire - but nothing consumes that, so the chains
-     * share no recipe. A recipe taking it further would let one recipe sit on two chains, which
-     * ChainResultCalculator attributes to whichever chain it saw last.
+     * Two routes may only meet at a dead end. Super antifire and extended antifire both make
+     * extended super antifire, and torstol and torstol unf both make super combat - but nothing
+     * consumes either, so no recipe sits on two rows. One that did would be counted on both, and
+     * the item where they met would hold a single step for two rows that each chose it.
+     * <p>
+     * This covers routes where one primary can become the other, too. Torstol becomes torstol unf,
+     * but a row taking torstol straight to a product leaves banked unf vials to root a row of
+     * their own, which is why r86 is left out of the table.
      */
     @Test
-    public void whereTwoIndependentRoutesMeetNothingFollows() {
+    public void whereTwoRoutesMeetNothingFollows() {
         final RecipeGraph graph = new RecipeGraph(Recipes.all());
 
-        final Map<Integer, List<Recipe>> producers = new LinkedHashMap<>();
+        final Map<Integer, List<Integer>> producerIdsByItemId = new LinkedHashMap<>();
         for (Recipe recipe : Recipes.all()) {
-            producers.computeIfAbsent(recipe.getOutput().getItemId(), k -> new ArrayList<>()).add(recipe);
+            producerIdsByItemId.computeIfAbsent(recipe.getOutput().getItemId(), k -> new ArrayList<>())
+                    .add(recipe.getId());
         }
 
-        producers.forEach((itemId, made) -> {
-            if (made.size() < 2 || !convergeIndependently(graph, made)) return;
+        producerIdsByItemId.forEach((itemId, producerIds) -> {
+            if (producerIds.size() < 2) return;
 
-            assertTrue("item " + itemId + " is reached by independent routes and feeds "
+            assertTrue("item " + itemId + " is made by " + producerIds + " and feeds "
                     + graph.recipeOptionsFor(itemId), graph.recipeOptionsFor(itemId).isEmpty());
         });
     }
@@ -129,25 +134,5 @@ public class HerbloreRecipesTest {
         }
 
         return items;
-    }
-
-    /**
-     * Independent means neither primary can become the other, so a chain through one is never a
-     * chain through the other.
-     */
-    private static boolean convergeIndependently(RecipeGraph graph, List<Recipe> made) {
-        for (int i = 0; i < made.size(); i++) {
-            for (int j = i + 1; j < made.size(); j++) {
-                final int one = made.get(i).getPrimary().getItemId();
-                final int other = made.get(j).getPrimary().getItemId();
-
-                if (!graph.findItemsReachableFrom(one).contains(other)
-                        && !graph.findItemsReachableFrom(other).contains(one)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 }

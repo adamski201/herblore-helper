@@ -1,7 +1,6 @@
 package adamski.app;
 
 import adamski.data.Recipes;
-import adamski.domain.Recipe;
 import adamski.domain.RecipeChainResolver;
 import adamski.domain.RecipeSelection;
 import adamski.domain.RecipeGraph;
@@ -34,16 +33,9 @@ public class HerbloreApp {
 
     private final HerbloreStore store;
 
-    /**
-     * The recipe table in force. Swapped rather than mutated, because a recipe is a map key and
-     * results hold on to the ones they were computed from.
-     */
-    @Getter
-    private List<Recipe> recipes;
+    private final RecipeChainResolver chainResolver;
 
-    private RecipeChainResolver chainResolver;
-
-    private RecipeSelector selector;
+    private final RecipeSelector selector;
 
     @Getter
     private volatile HerbloreResult result;
@@ -51,7 +43,10 @@ public class HerbloreApp {
     @Inject
     public HerbloreApp(HerbloreStore store) {
         this.store = store;
-        adoptRecipes(Recipes.all());
+
+        final RecipeGraph graph = new RecipeGraph(Recipes.all());
+        this.chainResolver = new RecipeChainResolver(graph);
+        this.selector = new RecipeSelector(graph);
     }
 
     /**
@@ -92,14 +87,6 @@ public class HerbloreApp {
 
     public void removeListener(HerbloreListener listener) {
         listeners.remove(listener);
-    }
-
-    private void adoptRecipes(List<Recipe> recipes) {
-        this.recipes = List.copyOf(recipes);
-
-        final RecipeGraph graph = new RecipeGraph(this.recipes);
-        this.chainResolver = new RecipeChainResolver(graph);
-        this.selector = new RecipeSelector(graph);
     }
 
     private HerbloreResult recalculate() {
