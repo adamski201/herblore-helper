@@ -1,4 +1,7 @@
-package adamski.domain;
+package adamski.domain.route;
+
+import adamski.domain.Ingredient;
+import adamski.domain.Recipe;
 
 import org.junit.Test;
 

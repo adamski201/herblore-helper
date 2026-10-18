@@ -1,4 +1,4 @@
-package adamski.ui;
+package adamski.ui.icon;
 
 import javax.swing.Icon;
 
@@ -13,12 +13,12 @@ import java.awt.RenderingHints;
  * A red circle struck through, for "Make nothing" - centred in a sprite's room so it lines up with
  * the item sprites beside it.
  */
-final class NoEntryIcon implements Icon {
+public final class NoEntryIcon implements Icon {
     private static final int DIAMETER = 16;
 
     private final Color color;
 
-    NoEntryIcon(Color color) {
+    public NoEntryIcon(Color color) {
         this.color = color;
     }
 

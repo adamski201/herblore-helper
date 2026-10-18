@@ -1,6 +1,6 @@
 package adamski.data;
 
-import adamski.domain.RecipeGraph;
+import adamski.domain.route.RecipeGraph;
 import adamski.domain.Recipe;
 import net.runelite.api.gameval.ItemID;
 import org.junit.Test;

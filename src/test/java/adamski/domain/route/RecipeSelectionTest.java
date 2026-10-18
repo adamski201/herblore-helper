@@ -1,4 +1,4 @@
-package adamski.domain;
+package adamski.domain.route;
 
 import org.junit.Test;
 

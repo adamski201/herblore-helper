@@ -1,6 +1,6 @@
 package adamski.infrastructure;
 
-import adamski.domain.RecipeSelection;
+import adamski.domain.route.RecipeSelection;
 import com.google.gson.Gson;
 import org.junit.Test;
 

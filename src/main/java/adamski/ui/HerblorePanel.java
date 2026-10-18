@@ -51,7 +51,7 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
      * EDT only.
      */
     private Map<Integer, RowView> shownRowByRootItemId = new HashMap<>();
-    private Map<Integer, ChainRowPanel> panelByRootItemId = new HashMap<>();
+    private Map<Integer, RowPanel> panelByRootItemId = new HashMap<>();
 
     /**
      * Every sprite asked for, kept here rather than left to ItemManager's cache, which holds 128
@@ -162,14 +162,14 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
                 rowViews.stream().map(RowView::getRootItemId).collect(Collectors.toList()),
                 pickedOnRootItemId);
 
-        final Map<Integer, ChainRowPanel> panels = new HashMap<>();
+        final Map<Integer, RowPanel> panels = new HashMap<>();
         rows.removeAll();
         for (int rootItemId : arranged) {
             final RowView row = rowByRootItemId.get(rootItemId);
 
-            ChainRowPanel panel = panelByRootItemId.get(rootItemId);
+            RowPanel panel = panelByRootItemId.get(rootItemId);
             if (panel == null || !row.equals(shownRowByRootItemId.get(rootItemId))) {
-                panel = new ChainRowPanel(row, expandedRootItemIds.contains(rootItemId),
+                panel = new RowPanel(row, expandedRootItemIds.contains(rootItemId),
                         expanded -> {
                             if (expanded) expandedRootItemIds.add(rootItemId);
                             else expandedRootItemIds.remove(rootItemId);
@@ -196,7 +196,7 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
                 final Color color = line.getAmount() < 0
                         ? ColorScheme.PROGRESS_ERROR_COLOR
                         : ColorScheme.PROGRESS_COMPLETE_COLOR;
-                secondaries.add(ChainRowPanel.lineOf(line.getName(), Amounts.abbreviate(line.getAmount()), color));
+                secondaries.add(RowPanel.lineOf(line.getName(), Amounts.abbreviate(line.getAmount()), color));
             }
         }
 

@@ -1,9 +1,12 @@
-package adamski.domain;
+package adamski.domain.route;
+
+import adamski.domain.Ingredient;
+import adamski.domain.ItemQuantities;
+import adamski.domain.Recipe;
 
 import org.junit.Test;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

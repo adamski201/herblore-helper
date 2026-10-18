@@ -1,4 +1,6 @@
-package adamski.domain;
+package adamski.domain.route;
+
+import adamski.domain.Recipe;
 
 import java.util.LinkedHashMap;
 import java.util.List;

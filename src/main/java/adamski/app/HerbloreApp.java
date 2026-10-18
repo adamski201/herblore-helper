@@ -1,10 +1,10 @@
 package adamski.app;
 
-import adamski.domain.RecipeChainResolver;
-import adamski.domain.RecipeSelection;
-import adamski.domain.RecipeGraph;
-import adamski.domain.RecipeSelector;
-import adamski.domain.ChainResultCalculator;
+import adamski.domain.route.RecipeChainResolver;
+import adamski.domain.route.RecipeSelection;
+import adamski.domain.route.RecipeGraph;
+import adamski.domain.route.RecipeSelector;
+import adamski.domain.result.ChainResultCalculator;
 import adamski.domain.ItemQuantities;
 import adamski.domain.ItemSource;
 import lombok.Getter;

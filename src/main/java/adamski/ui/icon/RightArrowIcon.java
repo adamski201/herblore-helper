@@ -1,4 +1,4 @@
-package adamski.ui;
+package adamski.ui.icon;
 
 import javax.swing.Icon;
 
@@ -14,13 +14,13 @@ import java.awt.geom.Path2D;
  * A plain arrow pointing right, from a recipe's input to its output. Drawn for the same reason
  * as CornerArrowIcon.
  */
-final class RightArrowIcon implements Icon {
+public final class RightArrowIcon implements Icon {
     private static final int WIDTH = 8;
     private static final int HEIGHT = 7;
 
     private final Color color;
 
-    RightArrowIcon(Color color) {
+    public RightArrowIcon(Color color) {
         this.color = color;
     }
 

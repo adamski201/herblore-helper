@@ -1,4 +1,11 @@
-package adamski.domain;
+package adamski.domain.result;
+
+import adamski.domain.ItemQuantities;
+import adamski.domain.Recipe;
+import adamski.domain.route.RecipeChain;
+import adamski.domain.yield.RecipeRun;
+import adamski.domain.yield.RecipeYieldCalculator;
+import adamski.domain.yield.SecondaryBalanceCalculator;
 
 import java.util.ArrayList;
 import java.util.HashMap;

@@ -1,5 +1,8 @@
-package adamski.domain;
+package adamski.domain.yield;
 
+
+import adamski.domain.Ingredient;
+import adamski.domain.ItemQuantities;
 
 import java.util.HashMap;
 import java.util.List;

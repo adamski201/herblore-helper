@@ -1,5 +1,6 @@
-package adamski.domain;
+package adamski.domain.result;
 
+import adamski.domain.ItemQuantities;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;

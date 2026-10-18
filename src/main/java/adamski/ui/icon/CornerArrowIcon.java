@@ -1,4 +1,4 @@
-package adamski.ui;
+package adamski.ui.icon;
 
 import javax.swing.Icon;
 
@@ -14,12 +14,12 @@ import java.awt.geom.Path2D;
  * A down-then-right arrow, leading from the root's name to what it becomes. Drawn rather than
  * typed because the RuneScape fonts have no such glyph.
  */
-final class CornerArrowIcon implements Icon {
+public final class CornerArrowIcon implements Icon {
     private static final int SIZE = 10;
 
     private final Color color;
 
-    CornerArrowIcon(Color color) {
+    public CornerArrowIcon(Color color) {
         this.color = color;
     }
 

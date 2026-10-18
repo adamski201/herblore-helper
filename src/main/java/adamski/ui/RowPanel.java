@@ -1,5 +1,11 @@
 package adamski.ui;
 
+import adamski.ui.icon.CaretIcon;
+import adamski.ui.icon.CornerArrowIcon;
+import adamski.ui.icon.NoEntryIcon;
+import adamski.ui.icon.RightArrowIcon;
+import adamski.ui.icon.StackIcon;
+
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.FontManager;
@@ -51,7 +57,7 @@ import java.util.function.Supplier;
  * Immutable once built: a row whose view changes is replaced, not updated, so nothing here holds
  * state beyond the one row.
  */
-class ChainRowPanel extends JPanel {
+class RowPanel extends JPanel {
     private static final Color ROOT_SHADE = new Color(0x1d1d1d);
     private static final Color ROOT_HOVER = new Color(0x222222);
     // between the RuneLite greys: close enough to the row to read as one piece, far enough to show
@@ -93,7 +99,7 @@ class ChainRowPanel extends JPanel {
      * @param iconOf            an item's plain sprite. Asked on the EDT, so ItemManager queues the
      *                          drawing for the client thread rather than doing it there and then
      */
-    ChainRowPanel(RowView row, boolean expanded, Consumer<Boolean> onToggle,
+    RowPanel(RowView row, boolean expanded, Consumer<Boolean> onToggle,
                   BiConsumer<Integer, Integer> onProductSelected, IntFunction<AsyncBufferedImage> iconOf) {
         setLayout(new BorderLayout());
         setOpaque(false);

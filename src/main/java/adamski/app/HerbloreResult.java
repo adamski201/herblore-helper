@@ -1,15 +1,14 @@
 package adamski.app;
 
-import adamski.domain.SecondaryBalanceCalculator;
+import adamski.domain.yield.SecondaryBalanceCalculator;
 import adamski.domain.ItemQuantities;
-import adamski.domain.ChainResult;
-import adamski.domain.SecondaryBalance;
+import adamski.domain.result.ChainResult;
+import adamski.domain.yield.SecondaryBalance;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * Everything one bank read produced, published as a unit so the parts cannot disagree.

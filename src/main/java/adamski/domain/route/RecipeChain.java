@@ -1,5 +1,6 @@
-package adamski.domain;
+package adamski.domain.route;
 
+import adamski.domain.Recipe;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;

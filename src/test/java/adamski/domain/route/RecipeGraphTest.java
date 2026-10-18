@@ -1,6 +1,9 @@
-package adamski.domain;
+package adamski.domain.route;
 
 import adamski.data.Recipes;
+import adamski.domain.Ingredient;
+import adamski.domain.Recipe;
+
 import net.runelite.api.gameval.ItemID;
 import org.junit.Test;
 
@@ -8,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;

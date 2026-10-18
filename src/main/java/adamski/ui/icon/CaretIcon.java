@@ -1,4 +1,4 @@
-package adamski.ui;
+package adamski.ui.icon;
 
 import javax.swing.Icon;
 
@@ -9,13 +9,13 @@ import java.awt.Graphics;
 /**
  * A small downward triangle, the usual sign of a menu.
  */
-final class CaretIcon implements Icon {
+public final class CaretIcon implements Icon {
     private static final int WIDTH = 5;
     private static final int HEIGHT = 3;
 
     private final Color color;
 
-    CaretIcon(Color color) {
+    public CaretIcon(Color color) {
         this.color = color;
     }
 

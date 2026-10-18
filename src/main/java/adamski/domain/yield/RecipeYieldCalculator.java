@@ -1,5 +1,7 @@
-package adamski.domain;
+package adamski.domain.yield;
 
+
+import adamski.domain.Recipe;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -9,7 +11,7 @@ import java.util.Map;
 /**
  * How far one banked item gets when it is run through a chain of recipes.
  */
-final class RecipeYieldCalculator {
+public final class RecipeYieldCalculator {
     private RecipeYieldCalculator() {
     }
 

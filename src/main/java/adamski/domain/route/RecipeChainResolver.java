@@ -1,5 +1,8 @@
-package adamski.domain;
+package adamski.domain.route;
 
+
+import adamski.domain.ItemQuantities;
+import adamski.domain.Recipe;
 
 import java.util.ArrayList;
 import java.util.Collections;

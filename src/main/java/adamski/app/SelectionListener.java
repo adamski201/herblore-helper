@@ -1,6 +1,6 @@
 package adamski.app;
 
-import adamski.domain.RecipeSelection;
+import adamski.domain.route.RecipeSelection;
 
 /**
  * Told when the user changes what a row makes. The selection is an input, not a result, so it has

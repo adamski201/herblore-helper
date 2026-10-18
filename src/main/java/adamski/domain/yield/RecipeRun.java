@@ -1,5 +1,6 @@
-package adamski.domain;
+package adamski.domain.yield;
 
+import adamski.domain.Recipe;
 import lombok.Value;
 
 /**

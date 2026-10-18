@@ -1,11 +1,11 @@
 package adamski.ui;
 
-import adamski.domain.ChainItemXp;
-import adamski.domain.ChainRecipeXp;
-import adamski.domain.ChainResult;
+import adamski.domain.result.ChainItemXp;
+import adamski.domain.result.ChainRecipeXp;
+import adamski.domain.result.ChainResult;
 import adamski.domain.ItemQuantities;
 import adamski.domain.Recipe;
-import adamski.domain.SecondaryBalance;
+import adamski.domain.yield.SecondaryBalance;
 
 import java.util.ArrayList;
 import java.util.Comparator;

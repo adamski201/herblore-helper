@@ -2,7 +2,7 @@ package adamski.infrastructure;
 
 import adamski.app.HerbloreApp;
 import adamski.app.SelectionListener;
-import adamski.domain.RecipeSelection;
+import adamski.domain.route.RecipeSelection;
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 import com.google.gson.reflect.TypeToken;

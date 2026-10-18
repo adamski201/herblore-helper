@@ -2,7 +2,7 @@ package adamski.app;
 
 import adamski.domain.ItemQuantities;
 import adamski.domain.ItemSource;
-import adamski.domain.RecipeSelection;
+import adamski.domain.route.RecipeSelection;
 
 import javax.inject.Singleton;
 import java.util.Collections;

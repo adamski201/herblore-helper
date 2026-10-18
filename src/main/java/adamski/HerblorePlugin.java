@@ -2,7 +2,7 @@ package adamski;
 
 import adamski.app.HerbloreApp;
 import adamski.data.Recipes;
-import adamski.domain.RecipeGraph;
+import adamski.domain.route.RecipeGraph;
 import adamski.infrastructure.RuneLiteAdapter;
 import adamski.infrastructure.SelectionPersistence;
 import adamski.ui.HerblorePanel;
@@ -39,7 +39,7 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
     @Inject
     private SelectionPersistence selectionPersistence;
     @Inject
-    private HerbloreApp service;
+    private HerbloreApp app;
     @Inject
     private RecipeGraph graph;
 
@@ -50,14 +50,14 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
 
     @Override
     protected void startUp() throws Exception {
-        panel = new HerblorePanel(itemManager, clientThread, service, graph.findProductRecipesByItem());
+        panel = new HerblorePanel(itemManager, clientThread, app, graph.findProductRecipesByItem());
 
         final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "icon.png");
         navButton = NavigationButton.builder().tooltip("Herblore Helper").icon(icon).priority(100).panel(panel).build();
 
         clientToolbar.addNavigation(navButton);
-        service.addResultListener(panel);
-        service.addSelectionListener(selectionPersistence);
+        app.addResultListener(panel);
+        app.addSelectionListener(selectionPersistence);
 
         // already logged in when the plugin is switched on, so no profile change is coming
         clientThread.invoke(selectionPersistence::load);
@@ -74,8 +74,8 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
         subscribers.forEach(eventBus::unregister);
         subscribers.clear();
 
-        service.removeSelectionListener(selectionPersistence);
-        service.removeResultListener(panel);
+        app.removeSelectionListener(selectionPersistence);
+        app.removeResultListener(panel);
         clientToolbar.removeNavigation(navButton);
         panel = null;
         navButton = null;

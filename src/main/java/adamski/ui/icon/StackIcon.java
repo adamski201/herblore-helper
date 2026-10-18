@@ -1,4 +1,4 @@
-package adamski.ui;
+package adamski.ui.icon;
 
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.AsyncBufferedImage;
@@ -16,7 +16,7 @@ import java.awt.Graphics;
  * synchronously when asked on the client thread - every change of quantity meant a fresh model
  * render. This takes the plain sprite, cached once per item, and paints the number on top.
  */
-final class StackIcon implements Icon {
+public final class StackIcon implements Icon {
     static final int WIDTH = 36;
     static final int HEIGHT = 32;
 
@@ -30,7 +30,7 @@ final class StackIcon implements Icon {
     /**
      * @param quantity rounded to a whole number; nothing is drawn for less than one
      */
-    StackIcon(AsyncBufferedImage sprite, double quantity) {
+    public StackIcon(AsyncBufferedImage sprite, double quantity) {
         this.sprite = sprite;
 
         final long whole = Math.round(quantity);
@@ -52,7 +52,7 @@ final class StackIcon implements Icon {
     /**
      * Repaints the component once the sprite has been drawn, since it starts out blank.
      */
-    void repaintWhenLoaded(Component component) {
+    public void repaintWhenLoaded(Component component) {
         sprite.onLoaded(component::repaint);
     }
 
