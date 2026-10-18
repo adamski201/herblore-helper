@@ -19,12 +19,14 @@ public final class RecipeSelector {
      *
      * @param current       what is stored now
      * @param rootItemId    the item the chain starts from
-     * @param productItemId what it should end at, or {@link RecipeSelection#DEFAULT} for its default
+     * @param productItemId what it should end at, {@code rootItemId} itself to make nothing, or
+     *                      {@link RecipeSelection#DEFAULT} for its default
      * @return the selection to store, or {@code current} unchanged if the product cannot be reached
      */
     public RecipeSelection select(RecipeSelection current, int rootItemId, int productItemId) {
-        // clear the current route first
+        // clear the current route first, root included - a root told to stop has no route to clear
         final Map<Integer, Integer> recipeByItemId = new LinkedHashMap<>();
+        recipeByItemId.put(rootItemId, RecipeSelection.DEFAULT);
         for (Recipe recipe : graph.findRoute(rootItemId, current)) {
             recipeByItemId.put(recipe.getPrimary().getItemId(), RecipeSelection.DEFAULT);
             recipeByItemId.put(recipe.getOutput().getItemId(), RecipeSelection.DEFAULT);
@@ -32,8 +34,9 @@ public final class RecipeSelector {
 
         if (productItemId == RecipeSelection.DEFAULT) return current.with(recipeByItemId);
 
+        // ending where it starts takes no route at all - the row makes nothing
         final List<Recipe> route = graph.findShortestRoute(rootItemId, productItemId);
-        if (route.isEmpty()) return current;
+        if (route.isEmpty() && productItemId != rootItemId) return current;
 
         for (Recipe recipe : route) {
             recipeByItemId.put(recipe.getPrimary().getItemId(), recipe.getId());

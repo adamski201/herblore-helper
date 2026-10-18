@@ -1,6 +1,6 @@
 package adamski.app;
 
-public interface HerbloreListener {
+public interface ResultListener {
     /**
      * Called on the client thread, so any RuneLite lookup has to happen before hopping to the EDT.
      */

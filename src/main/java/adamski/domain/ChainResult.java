@@ -15,7 +15,6 @@ import java.util.List;
 public final class ChainResult {
     private final int rootItemId;
     private final int productItemId;
-    private final List<Integer> productOptions;
 
     /**
      * Total XP sliced by the items in this chain.
@@ -29,13 +28,17 @@ public final class ChainResult {
 
     private final double outputQuantity;
 
+    /**
+     * How much of the root item is held, in 1-dose units.
+     */
+    private final double rootQuantity;
+
     private final ItemQuantities secondaryDemand;
 
     private final double xp;
 
     public ChainResult(int rootItemId,
                        int productItemId,
-                       List<Integer> productOptions,
                        List<ChainItemXp> itemContributions,
                        List<ChainRecipeXp> recipeContributions,
                        double outputQuantity,
@@ -46,11 +49,21 @@ public final class ChainResult {
 
         this.rootItemId = rootItemId;
         this.productItemId = productItemId;
-        this.productOptions = List.copyOf(productOptions);
         this.itemContributions = List.copyOf(itemContributions);
         this.recipeContributions = List.copyOf(recipeContributions);
         this.outputQuantity = outputQuantity;
+        this.rootQuantity = this.itemContributions.stream()
+                .filter(contribution -> contribution.getItemId() == rootItemId)
+                .mapToDouble(ChainItemXp::getQuantity)
+                .sum();
         this.secondaryDemand = secondaryDemand;
         this.xp = xp;
+    }
+
+    /**
+     * Whether the chain ends where it starts - told to stop at its root, so it runs no recipes.
+     */
+    public boolean makesNothing() {
+        return productItemId == rootItemId;
     }
 }

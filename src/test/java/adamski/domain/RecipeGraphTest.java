@@ -37,6 +37,34 @@ public class RecipeGraphTest {
         assertTrue(GRAPH.recipeOptionsFor(ItemID._1DOSE1DEFENSE).isEmpty());
     }
 
+    /**
+     * Grimy avantoe reaches hunting potions by way of the clean herb and the unf vial, but the
+     * recipe given for them is only the last step - unf vial to potion.
+     */
+    @Test
+    public void eachProductComesWithTheLastRecipeOnTheWayToIt() {
+        final List<Recipe> productRecipes = GRAPH.findProductRecipesByItem().get(ItemID.UNIDENTIFIED_AVANTOE);
+
+        assertTrue(productRecipes.contains(recipeMaking(ItemID.AVANTOEVIAL, ItemID._1DOSEHUNTING)));
+        assertTrue("intermediates count - stopping at an unf is a valid choice",
+                productRecipes.contains(recipeMaking(ItemID.AVANTOE, ItemID.AVANTOEVIAL)));
+    }
+
+    @Test
+    public void anItemThatMakesNothingHasNoProductRecipes() {
+        assertFalse(GRAPH.findProductRecipesByItem().containsKey(ItemID._1DOSE1DEFENSE));
+    }
+
+    /**
+     * The recipe in the real table that turns one item into the other.
+     */
+    private static Recipe recipeMaking(int primaryItemId, int outputItemId) {
+        return Recipes.all().stream()
+                .filter(recipe -> recipe.getPrimary().getItemId() == primaryItemId
+                        && recipe.getOutput().getItemId() == outputItemId)
+                .findFirst().orElseThrow();
+    }
+
     @Test
     public void thePickerOffersIntermediatesAsWellAsProducts() {
         final Set<Integer> reachable = GRAPH.findItemsReachableFrom(ItemID.RANARR_SEED);

@@ -64,6 +64,26 @@ public final class RecipeGraph {
     }
 
     /**
+     * @return the recipes that produce the potential final products for each item.
+     */
+    public Map<Integer, List<Recipe>> findProductRecipesByItem() {
+        final Map<Integer, List<Recipe>> byItem = new HashMap<>();
+
+        for (int itemId : options.keySet()) {
+            final List<Recipe> productRecipes = new ArrayList<>();
+
+            for (int productItemId : findItemsReachableFrom(itemId)) {
+                final List<Recipe> route = findShortestRoute(itemId, productItemId);
+                productRecipes.add(route.get(route.size() - 1));
+            }
+
+            byItem.put(itemId, List.copyOf(productRecipes));
+        }
+
+        return Collections.unmodifiableMap(byItem);
+    }
+
+    /**
      * The recipes turning one item into another, by the fewest steps. Where several routes reach the
      * product - torstol makes super combat directly or by way of the unf vial - the shortest is the
      * one a picked product means. The others are worth the same xp, which
@@ -155,6 +175,11 @@ public final class RecipeGraph {
         return Collections.unmodifiableList(route);
     }
 
+    /**
+     * Kahn's algorithm to put every item after everything that makes it e.g. seed -> herb -> potion.
+     *
+     * @throws IllegalStateException if the table has a cycle, to catch data issues
+     */
     private List<Integer> sortByDependency(Set<Integer> items) {
         final Map<Integer, Integer> remaining = new HashMap<>();
         for (Integer item : items) {

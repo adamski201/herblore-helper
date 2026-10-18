@@ -21,7 +21,7 @@ public class RecipeChainResolverTest {
     private static final Recipe ONE_TO_TWO = recipe(10, 1, 2);
     private static final Recipe TWO_TO_THREE = recipe(11, 2, 3);
     private static final Recipe THREE_TO_FOUR = recipe(12, 3, 4);
-    private static final Recipe THREE_TO_FIVE = recipe(13, 3, 5);
+    private static final Recipe THREE_TO_FIVE = recipe(13, 3, 5, 13);
     private static final Recipe SIX_TO_SEVEN = recipe(14, 6, 7);
 
     private static final RecipeGraph GRAPH = new RecipeGraph(
@@ -71,10 +71,18 @@ public class RecipeChainResolverTest {
         assertEquals(3, chains.get(1).getRootItemId());
     }
 
+    /**
+     * The pile of item 1 has been used up, so the cut now lands on the item rooting the chain. It
+     * makes nothing, but it is still a chain - its row is the only place left to undo the cut.
+     */
     @Test
-    public void aChainCutWhereItsRootStandsProducesNothing() {
-        // the pile of item 1 has been used up, so the cut now lands on the item rooting the chain
-        assertTrue(RESOLVER.resolve(owned(2, 10), stopAt(2)).isEmpty());
+    public void aChainCutWhereItsRootStandsIsStillAChain() {
+        final List<RecipeChain> chains = RESOLVER.resolve(owned(2, 10), stopAt(2));
+
+        assertEquals(1, chains.size());
+        assertEquals(2, chains.get(0).getRootItemId());
+        assertEquals(2, chains.get(0).getProductItemId());
+        assertTrue(chains.get(0).getRecipes().isEmpty());
     }
 
     @Test
@@ -82,12 +90,29 @@ public class RecipeChainResolverTest {
         // the chain is cut at item 2 and the pile of item 1 is gone, so item 3 is left to itself
         final List<RecipeChain> chains = RESOLVER.resolve(owned(2, 10, 3, 5), stopAt(2));
 
-        assertEquals(1, chains.size());
-        assertEquals(3, chains.get(0).getRootItemId());
-        assertEquals(4, chains.get(0).getProductItemId());
-        assertEquals(List.of(12), chains.get(0).getRecipes().stream()
+        assertEquals(2, chains.size());
+        assertEquals(3, chains.get(1).getRootItemId());
+        assertEquals(4, chains.get(1).getProductItemId());
+        assertEquals(List.of(12), chains.get(1).getRecipes().stream()
                 .map(Recipe::getId)
                 .collect(Collectors.toList()));
+    }
+
+    /**
+     * The panel orders rows of one family by this - seed before grimy before unf.
+     */
+    @Test
+    public void chainsComeBackLeastMatureRootFirst() {
+        final List<Integer> roots = RESOLVER.resolve(owned(3, 8, 6, 4), stopAt(2)).stream()
+                .map(RecipeChain::getRootItemId)
+                .collect(Collectors.toList());
+
+        final List<Integer> byMaturity = roots.stream()
+                .sorted(java.util.Comparator.comparingInt(GRAPH::maturityOf))
+                .collect(Collectors.toList());
+
+        assertEquals(2, roots.size());
+        assertEquals(byMaturity, roots);
     }
 
     @Test
@@ -172,7 +197,11 @@ public class RecipeChainResolverTest {
     }
 
     private static Recipe recipe(int id, int primary, int output) {
+        return recipe(id, primary, output, 0);
+    }
+
+    private static Recipe recipe(int id, int primary, int output, int level) {
         return new Recipe(id, new Ingredient(primary, 1), new Ingredient[0],
-                new Ingredient(output, 1), "test", 1f, 0);
+                new Ingredient(output, 1), "test", 1f, level);
     }
 }

@@ -1,127 +1,229 @@
 package adamski.ui;
 
-import adamski.app.HerbloreListener;
+import adamski.app.HerbloreApp;
+import adamski.app.ResultListener;
+import adamski.domain.Recipe;
 import adamski.app.HerbloreResult;
-import adamski.domain.ItemQuantities;
-import adamski.domain.ChainResult;
-import adamski.domain.ChainItemXp;
-import adamski.domain.ChainRecipeXp;
-import adamski.domain.SecondaryBalance;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.ui.ColorScheme;
+import net.runelite.client.ui.DynamicGridLayout;
+import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
+import net.runelite.client.util.AsyncBufferedImage;
 
-import javax.swing.*;
-import java.awt.*;
-import java.util.Comparator;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+import javax.swing.border.EmptyBorder;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
-public class HerblorePanel extends PluginPanel implements HerbloreListener {
+public class HerblorePanel extends PluginPanel implements ResultListener {
     private final ItemManager itemManager;
+    private final ClientThread clientThread;
+    private final HerbloreApp app;
+    private final RowViewFactory rowViewFactory;
 
-    private final JLabel status = new JLabel("No data yet");
-    private final JTextArea contents = new JTextArea();
+    private final JLabel total = new JLabel("No data yet - open your bank");
+    private final JPanel rows = new JPanel(new DynamicGridLayout(0, 1, 0, 3));
+    private final JPanel secondaries = new JPanel(new DynamicGridLayout(0, 1, 0, 1));
 
-    public HerblorePanel(ItemManager itemManager) {
+    /**
+     * Which rows are open, by root item, so they stay open when the rows are rebuilt. EDT only.
+     */
+    private final Set<Integer> expandedRootItemIds = new HashSet<>();
+
+    /**
+     * Where each row sits, kept between results. EDT only.
+     */
+    private final RowOrder rowOrder = new RowOrder();
+
+    /**
+     * What each row showed last time, and the panel showing it, by root item. A row whose view has
+     * not changed is kept as it is - no rebuild, and its hover, open menu and icons are left alone.
+     * EDT only.
+     */
+    private Map<Integer, RowView> shownRowByRootItemId = new HashMap<>();
+    private Map<Integer, ChainRowPanel> panelByRootItemId = new HashMap<>();
+
+    /**
+     * Every sprite asked for, kept here rather than left to ItemManager's cache, which holds 128
+     * across every plugin. A sprite evicted there comes back blank until the client thread redraws
+     * it, which flickers. A few hundred herblore items at most. EDT only.
+     */
+    private final Map<Integer, AsyncBufferedImage> spriteByItemId = new HashMap<>();
+
+    /**
+     * The row whose picker is being applied. Set and cleared on the client thread around
+     * selectProduct, which publishes before it returns - so a result seen while this is set is
+     * exactly the one the pick produced, and no bank update can be mistaken for it.
+     */
+    private Integer pickingOnRootItemId;
+
+    /**
+     * Whether the panel is open. EDT only.
+     */
+    private boolean active;
+
+    /**
+     * The latest result to arrive while the panel was closed, drawn when it opens. Only the latest
+     * is kept - a closed panel cannot be picked on, so the results skipped carry no pick for
+     * RowOrder to miss. EDT only.
+     */
+    private Runnable pendingRender;
+
+    /**
+     * @param productRecipesByItem for each item, the recipe making each product it could end at -
+     *                             what a row's menu offers. Fixed by the table, so given once here.
+     */
+    public HerblorePanel(ItemManager itemManager, ClientThread clientThread, HerbloreApp app,
+                         Map<Integer, List<Recipe>> productRecipesByItem) {
         this.itemManager = itemManager;
+        this.clientThread = clientThread;
+        this.app = app;
+        this.rowViewFactory = new RowViewFactory(this::name, productRecipesByItem);
 
         setLayout(new BorderLayout());
 
-        contents.setEditable(false);
-        contents.setLineWrap(false);
-        contents.setOpaque(false);
-        contents.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
-        contents.setForeground(Color.WHITE);
+        total.setFont(FontManager.getRunescapeBoldFont());
+        total.setForeground(Color.WHITE);
+        total.setBorder(new EmptyBorder(0, 0, 8, 0));
 
-        add(status, BorderLayout.NORTH);
-        add(contents, BorderLayout.CENTER);
+        rows.setOpaque(false);
+        secondaries.setOpaque(false);
+        secondaries.setBorder(new EmptyBorder(10, 0, 0, 0));
+
+        final JPanel content = new JPanel(new BorderLayout());
+        content.setOpaque(false);
+        content.add(total, BorderLayout.NORTH);
+        content.add(rows, BorderLayout.CENTER);
+        content.add(secondaries, BorderLayout.SOUTH);
+
+        add(content, BorderLayout.NORTH);
     }
 
     @Override
     public void onResultChanged(HerbloreResult result) {
         // Names resolve here - ItemManager cannot be touched from the EDT
-        final String text = formatChainResults(result.getChainResults())
-                + formatSecondaries(result.getSecondaryBalance())
-                + formatItems(result.getOwned());
+        final String totalText = String.format("Banked XP: %,.0f", result.getTotalXp());
 
-        final String total = String.format("Banked XP: %,.0f", result.getTotalXp());
+        // Rows worth nothing stay listed - a row stopped at an unf vial still needs its picker.
+        // Kept in the domain's order here; RowOrder decides where they sit.
+        final List<RowView> rowViews = result.getChainResults().stream()
+                .map(rowViewFactory::rowOf)
+                .collect(Collectors.toList());
+
+        final List<RowView.Line> secondaryLines = rowViewFactory.secondaryLinesOf(result.getSecondaryBalance());
+        final Integer pickedOnRootItemId = pickingOnRootItemId;
 
         SwingUtilities.invokeLater(() -> {
-            status.setText(total);
-            contents.setText(text);
+            final Runnable render = () -> render(totalText, rowViews, pickedOnRootItemId, secondaryLines);
+
+            if (active) {
+                render.run();
+            } else {
+                pendingRender = render;
+            }
         });
     }
 
-    private String formatChainResults(List<ChainResult> chainResults) {
-        final StringBuilder sb = new StringBuilder("XP by row\n");
+    @Override
+    public void onActivate() {
+        active = true;
 
-        chainResults.stream()
-                .filter(chainResult -> chainResult.getXp() > 0)
-                .sorted(Comparator.comparingDouble(ChainResult::getXp).reversed())
-                .forEach(chainResult -> {
-                    sb.append(String.format("%7s  %s -> %s%n", abbreviate(chainResult.getXp()),
-                            name(RowLabels.nameFor(chainResult.getRootItemId())), name(chainResult.getProductItemId())));
-
-                    sb.append(String.format("%7s    %s%n", abbreviate(chainResult.getOutputQuantity()), "made"));
-
-                    sb.append("         by item\n");
-                    for (ChainItemXp contribution : chainResult.getItemContributions()) {
-                        if (contribution.getXp() == 0) continue;
-                        sb.append(String.format("%7s    %s%n", abbreviate(contribution.getXp()),
-                                name(contribution.getItemId())));
-                    }
-
-                    sb.append("         by recipe\n");
-                    for (ChainRecipeXp contribution : chainResult.getRecipeContributions()) {
-                        sb.append(String.format("%7s    %s%n", abbreviate(contribution.getXp()),
-                                name(contribution.getRecipe().getOutput().getItemId())));
-                    }
-                });
-
-        return sb.toString();
+        if (pendingRender != null) {
+            pendingRender.run();
+            pendingRender = null;
+        }
     }
 
-    private String formatSecondaries(SecondaryBalance balance) {
-        if (balance.getNet().isEmpty()) return "";
-
-        final StringBuilder sb = new StringBuilder("\nSecondaries\n");
-
-        balance.getNet().asMap().entrySet().stream()
-                .sorted(Map.Entry.comparingByValue())
-                .forEach(e -> sb.append(String.format("%7s  %s%n", abbreviate(e.getValue()), name(e.getKey()))));
-
-        return sb.toString();
+    @Override
+    public void onDeactivate() {
+        active = false;
     }
 
-    private String formatItems(ItemQuantities owned) {
-        final StringBuilder sb = new StringBuilder("\nBanked\n");
+    private void render(String totalText, List<RowView> rowViews, Integer pickedOnRootItemId,
+                        List<RowView.Line> secondaryLines) {
+        total.setText(totalText);
 
-        owned.asMap().entrySet().stream()
-                .collect(Collectors.toMap(e -> name(e.getKey()), Map.Entry::getValue, Double::sum))
-                .entrySet().stream()
-                .sorted(Map.Entry.comparingByKey(Comparator.naturalOrder()))
-                .forEach(e -> sb.append(String.format("%7s  %s%n", abbreviate(e.getValue()), e.getKey())));
+        final Map<Integer, RowView> rowByRootItemId = new HashMap<>();
+        for (RowView row : rowViews) {
+            rowByRootItemId.put(row.getRootItemId(), row);
+        }
 
-        return sb.toString();
+        final List<Integer> arranged = rowOrder.arrange(
+                rowViews.stream().map(RowView::getRootItemId).collect(Collectors.toList()),
+                pickedOnRootItemId);
+
+        final Map<Integer, ChainRowPanel> panels = new HashMap<>();
+        rows.removeAll();
+        for (int rootItemId : arranged) {
+            final RowView row = rowByRootItemId.get(rootItemId);
+
+            ChainRowPanel panel = panelByRootItemId.get(rootItemId);
+            if (panel == null || !row.equals(shownRowByRootItemId.get(rootItemId))) {
+                panel = new ChainRowPanel(row, expandedRootItemIds.contains(rootItemId),
+                        expanded -> {
+                            if (expanded) expandedRootItemIds.add(rootItemId);
+                            else expandedRootItemIds.remove(rootItemId);
+                        },
+                        this::selectProduct,
+                        this::spriteOf);
+            }
+
+            panels.put(rootItemId, panel);
+            rows.add(panel);
+        }
+
+        shownRowByRootItemId = rowByRootItemId;
+        panelByRootItemId = panels;
+
+        secondaries.removeAll();
+        if (!secondaryLines.isEmpty()) {
+            final JLabel heading = new JLabel("Secondaries");
+            heading.setFont(FontManager.getRunescapeBoldFont());
+            heading.setForeground(Color.WHITE);
+            secondaries.add(heading);
+
+            for (RowView.Line line : secondaryLines) {
+                final Color color = line.getAmount() < 0
+                        ? ColorScheme.PROGRESS_ERROR_COLOR
+                        : ColorScheme.PROGRESS_COMPLETE_COLOR;
+                secondaries.add(ChainRowPanel.lineOf(line.getName(), Amounts.abbreviate(line.getAmount()), color));
+            }
+        }
+
+        revalidate();
+        repaint();
+    }
+
+    /**
+     * Called on the EDT by a row's picker. The app is only ever driven from the client thread, which
+     * is also where it publishes, so the new result comes back through onResultChanged as usual.
+     */
+    private void selectProduct(int rootItemId, int productItemId) {
+        clientThread.invoke(() -> {
+            pickingOnRootItemId = rootItemId;
+            try {
+                app.selectProduct(rootItemId, productItemId);
+            } finally {
+                pickingOnRootItemId = null;
+            }
+        });
+    }
+
+    private AsyncBufferedImage spriteOf(int itemId) {
+        return spriteByItemId.computeIfAbsent(itemId, itemManager::getImage);
     }
 
     private String name(int itemId) {
         return itemManager.getItemComposition(itemId).getName();
-    }
-
-    /**
-     * Numbers go first - the panel is about 32 monospace characters wide, and anything right-aligned
-     * past the item name is clipped off the edge without warning.
-     */
-    private static String abbreviate(double value) {
-        final String sign = value < 0 ? "-" : "";
-        final double magnitude = Math.abs(value);
-
-        if (magnitude >= 1_000_000) return sign + String.format("%.1fm", magnitude / 1_000_000);
-        if (magnitude >= 10_000) return sign + String.format("%.0fk", magnitude / 1_000);
-        if (magnitude >= 1_000) return sign + String.format("%.1fk", magnitude / 1_000);
-
-        return sign + String.format("%.0f", magnitude);
     }
 }

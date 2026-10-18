@@ -6,6 +6,7 @@ import net.runelite.api.gameval.ItemID;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -35,6 +36,20 @@ public class HerbloreRecipesTest {
     public void unrelatedItemsAreFiltered() {
         assertFalse(Recipes.isRelevantItem(ItemID.COINS));
         assertFalse(Recipes.isRelevantItem(ItemID.ABYSSAL_WHIP));
+    }
+
+    /**
+     * Saved choices store recipe ids, so a duplicate would make one choice mean two recipes. Ids
+     * must also never be renumbered - nothing here can catch that, so it is on whoever edits the
+     * table.
+     */
+    @Test
+    public void everyRecipeIdIsUnique() {
+        final Set<Integer> seen = new HashSet<>();
+
+        for (Recipe recipe : Recipes.all()) {
+            assertTrue("recipe id " + recipe.getId() + " is used twice", seen.add(recipe.getId()));
+        }
     }
 
     /**

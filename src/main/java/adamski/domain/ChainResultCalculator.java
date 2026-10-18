@@ -15,7 +15,8 @@ public final class ChainResultCalculator {
     /**
      * @param chains recipe chains
      * @param owned  items the player owns
-     * @return one result per chain, with chains nothing is banked against left out
+     * @return one result per chain, in the order the chains were given, with chains nothing is
+     * banked against left out
      */
     public static List<ChainResult> calculate(List<RecipeChain> chains, ItemQuantities owned) {
         final List<ChainResult> results = new ArrayList<>(chains.size());
@@ -31,7 +32,10 @@ public final class ChainResultCalculator {
             for (Integer itemId : ownedItemsInChain) {
                 final double quantity = owned.get(itemId);
                 final List<RecipeRun> runs = RecipeYieldCalculator.cascade(itemId, quantity, chain.getRecipes());
-                if (runs.isEmpty()) continue;
+
+                // A banked product makes nothing further, so it is left out. A root that makes
+                // nothing has been told to stop, and is kept so its chain still has a row.
+                if (runs.isEmpty() && itemId != chain.getRootItemId()) continue;
 
                 double itemXp = 0;
                 for (RecipeRun run : runs) {
@@ -57,7 +61,6 @@ public final class ChainResultCalculator {
             results.add(new ChainResult(
                     chain.getRootItemId(),
                     chain.getProductItemId(),
-                    chain.getProductOptions(),
                     itemContributions,
                     recipeContributions,
                     sumOutputQuantity(allRuns, chain.getProductItemId()),

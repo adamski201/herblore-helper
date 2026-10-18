@@ -1,6 +1,8 @@
 package adamski.app;
 
+import adamski.data.Recipes;
 import adamski.domain.ItemQuantities;
+import adamski.domain.RecipeGraph;
 import adamski.domain.ItemSource;
 import adamski.domain.RecipeSelection;
 import adamski.domain.ChainResult;
@@ -11,6 +13,7 @@ import net.runelite.api.gameval.ItemID;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -36,11 +39,13 @@ public class HerbloreAppTest {
      */
     private static final double GRIMY_RANARR_XP = 82.5;
 
+    private static final RecipeGraph GRAPH = new RecipeGraph(Recipes.all());
+
     private HerbloreApp app;
 
     @Before
     public void setUp() {
-        app = new HerbloreApp(new HerbloreStore());
+        app = new HerbloreApp(new HerbloreStore(), GRAPH);
     }
 
     @Test
@@ -304,6 +309,35 @@ public class HerbloreAppTest {
         assertEquals("the choice outlives the item that made it", ItemID._1DOSEHUNTING, drained.getProductItemId());
     }
 
+    @Test
+    public void aRowSetToMakeNothingIsWorthNothingButStaysListed() {
+        final ChainResult ranarr = bank(items(ItemID.UNIDENTIFIED_RANARR, 10)).getChainResults().get(0);
+
+        app.selectProduct(ranarr.getRootItemId(), ranarr.getRootItemId());
+
+        final HerbloreResult switchedOff = app.getResult();
+        assertEquals(0, switchedOff.getTotalXp(), DELTA);
+        assertEquals(1, switchedOff.getChainResults().size());
+        assertEquals(ItemID.UNIDENTIFIED_RANARR, switchedOff.getChainResults().get(0).getProductItemId());
+    }
+
+    /**
+     * Stopping avantoe at the clean herb leaves the clean herb told to stop. Once the seeds are gone
+     * it is all that is left, and it still needs a row to undo that choice from.
+     */
+    @Test
+    public void aStoppedHerbKeepsItsRowOnceTheBankDrains() {
+        final ChainResult withSeeds = bank(items(ItemID.AVANTOE_SEED, 10)).getChainResults().get(0);
+        app.selectProduct(withSeeds.getRootItemId(), ItemID.AVANTOE);
+
+        final List<ChainResult> drained = bank(items(ItemID.AVANTOE, 20)).getChainResults();
+
+        assertEquals(1, drained.size());
+        assertEquals(ItemID.AVANTOE, drained.get(0).getRootItemId());
+        assertEquals(ItemID.AVANTOE, drained.get(0).getProductItemId());
+        assertEquals(0, drained.get(0).getXp(), DELTA);
+    }
+
     /**
      * Super antifire and extended antifire both end at extended super antifire but neither can
      * become the other, so they are two chains and must not share a choice.
@@ -382,15 +416,6 @@ public class HerbloreAppTest {
     }
 
     @Test
-    public void chainsCarryTheProductsTheyCouldEndAtInstead() {
-        final ChainResult chain = bank(items(ItemID.UNIDENTIFIED_AVANTOE, 1)).getChainResults().get(0);
-
-        assertTrue(chain.getProductOptions().contains(ItemID._1DOSEHUNTING));
-        assertTrue("intermediates count - stopping at an unf is a valid choice",
-                chain.getProductOptions().contains(ItemID.AVANTOEVIAL));
-    }
-
-    @Test
     public void puttingAChainBackOnItsDefaultRestoresTheDefaultProduct() {
         final ChainResult chain = bank(items(ItemID.UNIDENTIFIED_AVANTOE, 1)).getChainResults().get(0);
 
@@ -398,6 +423,101 @@ public class HerbloreAppTest {
         app.selectProduct(chain.getRootItemId(), RecipeSelection.DEFAULT);
 
         assertEquals(ItemID._1DOSEFISHERSPOTION, app.getResult().getChainResults().get(0).getProductItemId());
+    }
+
+    @Test
+    public void aPickTellsSelectionListeners() {
+        final List<RecipeSelection> told = listenForSelections();
+        bank(items(ItemID.UNIDENTIFIED_AVANTOE, 1));
+
+        app.selectProduct(ItemID.UNIDENTIFIED_AVANTOE, ItemID._1DOSEHUNTING);
+
+        assertEquals(1, told.size());
+        assertEquals(pickedAvantoeHunting(), told.get(0));
+    }
+
+    @Test
+    public void aPickThatChangesNothingTellsNobody() {
+        final List<RecipeSelection> told = listenForSelections();
+        bank(items(ItemID.UNIDENTIFIED_AVANTOE, 1));
+
+        app.selectProduct(ItemID.UNIDENTIFIED_AVANTOE, ItemID._1DOSEHUNTING);
+        app.selectProduct(ItemID.UNIDENTIFIED_AVANTOE, ItemID._1DOSEHUNTING);
+
+        assertEquals(1, told.size());
+    }
+
+    /**
+     * No result is published before the first bank read, but the pick is real and must be saved.
+     */
+    @Test
+    public void aPickBeforeAnySourceIsReadIsStillTold() {
+        final List<RecipeSelection> told = listenForSelections();
+
+        app.selectProduct(ItemID.UNIDENTIFIED_AVANTOE, ItemID._1DOSEHUNTING);
+
+        assertEquals(1, told.size());
+    }
+
+    /**
+     * A restored selection came from whoever saved it, so they are not told to save it again.
+     */
+    @Test
+    public void aRestoreTellsNobody() {
+        final List<RecipeSelection> told = listenForSelections();
+
+        app.restoreSelection(pickedAvantoeHunting());
+
+        assertTrue(told.isEmpty());
+    }
+
+    @Test
+    public void aSelectionRestoredBeforeAnySourceIsReadTakesEffectOnTheFirstRead() {
+        app.restoreSelection(pickedAvantoeHunting());
+
+        assertNull(app.getResult());
+        assertEquals(ItemID._1DOSEHUNTING,
+                bank(items(ItemID.UNIDENTIFIED_AVANTOE, 1)).getChainResults().get(0).getProductItemId());
+    }
+
+    @Test
+    public void aSelectionRestoredAfterAReadIsPublished() {
+        bank(items(ItemID.UNIDENTIFIED_AVANTOE, 1));
+
+        app.restoreSelection(pickedAvantoeHunting());
+
+        assertEquals(ItemID._1DOSEHUNTING, app.getResult().getChainResults().get(0).getProductItemId());
+    }
+
+    /**
+     * Switching to an account with nothing saved restores the defaults - the last account's
+     * choices do not carry over.
+     */
+    @Test
+    public void restoringTheDefaultsUndoesEveryPick() {
+        bank(items(ItemID.UNIDENTIFIED_AVANTOE, 1));
+        app.selectProduct(ItemID.UNIDENTIFIED_AVANTOE, ItemID._1DOSEHUNTING);
+
+        app.restoreSelection(RecipeSelection.ALL_DEFAULT);
+
+        assertEquals(ItemID._1DOSEFISHERSPOTION, app.getResult().getChainResults().get(0).getProductItemId());
+    }
+
+    private List<RecipeSelection> listenForSelections() {
+        final List<RecipeSelection> told = new ArrayList<>();
+        app.addSelectionListener(told::add);
+        return told;
+    }
+
+    /**
+     * What a pick of hunting potions on grimy avantoe leaves behind, as a save would hold it.
+     */
+    private static RecipeSelection pickedAvantoeHunting() {
+        final HerbloreApp picker = new HerbloreApp(new HerbloreStore(), GRAPH);
+        final List<RecipeSelection> told = new ArrayList<>();
+        picker.addSelectionListener(told::add);
+        picker.selectProduct(ItemID.UNIDENTIFIED_AVANTOE, ItemID._1DOSEHUNTING);
+        return told.get(0);
     }
 
     private HerbloreResult bank(Map<Integer, Integer> bankItems) {
