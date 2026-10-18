@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -66,6 +67,33 @@ public class ChainResultCalculatorTest {
         assertEquals(2, results.size());
         assertEquals(1, results.get(0).getRootItemId());
         assertEquals(6, results.get(1).getRootItemId());
+    }
+
+    @Test
+    public void aStoppedChainStillHasAResultForItsRoot() {
+        final RecipeChain stopped = new RecipeChain(2, Collections.emptyList());
+
+        final List<ChainResult> results = ChainResultCalculator.calculate(List.of(stopped), owned(2, 10));
+
+        assertEquals(1, results.size());
+        assertEquals(2, results.get(0).getProductItemId());
+        assertEquals(0.0, results.get(0).getXp(), 0.0001);
+        assertEquals(10.0, results.get(0).getItemContributions().get(0).getQuantity(), 0.0001);
+        assertTrue(results.get(0).getRecipeContributions().isEmpty());
+        assertTrue(results.get(0).makesNothing());
+    }
+
+    @Test
+    public void theRootQuantityCountsTheRootAlone() {
+        final ChainResult result = calculate(owned(1, 8, 3, 5)).get(0);
+
+        assertEquals(8.0, result.getRootQuantity(), 0.0001);
+        assertFalse(result.makesNothing());
+    }
+
+    @Test
+    public void aBankedProductAddsNothingToItsChain() {
+        assertEquals(1, calculate(owned(1, 8, 4, 3)).get(0).getItemContributions().size());
     }
 
     @Test

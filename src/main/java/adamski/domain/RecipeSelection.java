@@ -56,6 +56,15 @@ public final class RecipeSelection {
         return recipeByItemId.getOrDefault(itemId, DEFAULT);
     }
 
+    /**
+     * @return every item with a choice, to the recipe it feeds or {@link #STOP} - never
+     * {@link #DEFAULT}, which is the same as no entry. {@link #of} takes it back unchanged, so this
+     * is what to save.
+     */
+    public Map<Integer, Integer> recipeByItemId() {
+        return Collections.unmodifiableMap(recipeByItemId);
+    }
+
     @Override
     public boolean equals(Object other) {
         if (this == other) return true;

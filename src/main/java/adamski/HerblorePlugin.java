@@ -1,10 +1,14 @@
 package adamski;
 
 import adamski.app.HerbloreApp;
+import adamski.data.Recipes;
+import adamski.domain.RecipeGraph;
 import adamski.infrastructure.RuneLiteAdapter;
+import adamski.infrastructure.SelectionPersistence;
 import adamski.ui.HerblorePanel;
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.game.ItemManager;
@@ -14,9 +18,9 @@ import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.util.ImageUtil;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 @Slf4j
@@ -24,16 +28,20 @@ import java.util.List;
 public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
     @Inject
     private ClientToolbar clientToolbar;
-
     @Inject
     private ItemManager itemManager;
-
+    @Inject
+    private ClientThread clientThread;
     @Inject
     private EventBus eventBus;
     @Inject
     private RuneLiteAdapter adapter;
     @Inject
+    private SelectionPersistence selectionPersistence;
+    @Inject
     private HerbloreApp service;
+    @Inject
+    private RecipeGraph graph;
 
     private final List<Object> subscribers = new ArrayList<>();
 
@@ -42,16 +50,21 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
 
     @Override
     protected void startUp() throws Exception {
-        panel = new HerblorePanel(itemManager);
+        panel = new HerblorePanel(itemManager, clientThread, service, graph.findProductRecipesByItem());
 
         final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "icon.png");
         navButton = NavigationButton.builder().tooltip("Herblore Helper").icon(icon).priority(100).panel(panel).build();
 
         clientToolbar.addNavigation(navButton);
-        service.addListener(panel);
+        service.addResultListener(panel);
+        service.addSelectionListener(selectionPersistence);
+
+        // already logged in when the plugin is switched on, so no profile change is coming
+        clientThread.invoke(selectionPersistence::load);
 
         // LAST!
         subscribers.add(adapter);
+        subscribers.add(selectionPersistence);
         subscribers.forEach(eventBus::register);
     }
 
@@ -61,7 +74,8 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
         subscribers.forEach(eventBus::unregister);
         subscribers.clear();
 
-        service.removeListener(panel);
+        service.removeSelectionListener(selectionPersistence);
+        service.removeResultListener(panel);
         clientToolbar.removeNavigation(navButton);
         panel = null;
         navButton = null;
@@ -70,5 +84,11 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
     @Provides
     HerbloreConfig provideConfig(ConfigManager configManager) {
         return configManager.getConfig(HerbloreConfig.class);
+    }
+
+    @Provides
+    @Singleton
+    RecipeGraph provideRecipeGraph() {
+        return new RecipeGraph(Recipes.all());
     }
 }

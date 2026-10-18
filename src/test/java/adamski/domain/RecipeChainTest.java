@@ -34,6 +34,19 @@ public class RecipeChainTest {
         new RecipeChain(Arrays.asList(ONE_TO_TWO, THREE_TO_FOUR));
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void theFirstRecipeMustTakeTheRoot() {
+        new RecipeChain(2, List.of(THREE_TO_FOUR));
+    }
+
+    @Test
+    public void aChainWithNoRecipesIsItsOwnProduct() {
+        final RecipeChain stopped = new RecipeChain(2, Collections.emptyList());
+
+        assertEquals(2, stopped.getRootItemId());
+        assertEquals(2, stopped.getProductItemId());
+    }
+
     private static Recipe recipe(int id, int primary, int output) {
         return new Recipe(id, new Ingredient(primary, 1), new Ingredient[0],
                 new Ingredient(output, 1), "test", 1f, 0);

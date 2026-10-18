@@ -3,6 +3,7 @@ package adamski.domain;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
@@ -72,6 +73,35 @@ public class RecipeSelectorTest {
                 SELECTOR.select(chosen, 1, RecipeSelection.DEFAULT);
 
         assertEquals(RecipeSelection.ALL_DEFAULT, cleared);
+    }
+
+    /**
+     * A root told to stop has no route of its own to clear, so its stop has to be cleared directly.
+     */
+    @Test
+    public void aStoppedRootGoesBackToDefault() {
+        final RecipeSelection stopped = RecipeSelection.of(Map.of(2, RecipeSelection.STOP));
+
+        assertEquals(RecipeSelection.ALL_DEFAULT, SELECTOR.select(stopped, 2, RecipeSelection.DEFAULT));
+    }
+
+    @Test
+    public void aStoppedRootCanBeSentOnToAProduct() {
+        final RecipeSelection stopped = RecipeSelection.of(Map.of(2, RecipeSelection.STOP));
+
+        assertEquals(11, SELECTOR.select(stopped, 2, 4).recipeIdFor(2));
+    }
+
+    @Test
+    public void endingWhereTheChainStartsStopsItsRoot() {
+        assertEquals(RecipeSelection.STOP, choose(1, 1).recipeIdFor(1));
+    }
+
+    @Test
+    public void makingNothingClearsTheRouteTheChainWasTaking() {
+        final RecipeSelection nothing = SELECTOR.select(choose(1, 5), 1, 1);
+
+        assertEquals(RecipeSelection.of(Map.of(1, RecipeSelection.STOP)), nothing);
     }
 
     @Test

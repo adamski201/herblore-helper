@@ -15,6 +15,13 @@ public class RecipeSelectionTest {
     }
 
     @Test
+    public void whatASelectionHoldsBuildsTheSameSelection() {
+        final RecipeSelection chosen = RecipeSelection.of(Map.of(1, 10, 2, RecipeSelection.STOP));
+
+        assertEquals(chosen, RecipeSelection.of(chosen.recipeByItemId()));
+    }
+
+    @Test
     public void withDropsAnItemSetBackToDefault() {
         final RecipeSelection chosen = RecipeSelection.of(Map.of(1, 10, 2, 11));
 

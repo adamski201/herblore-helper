@@ -4,8 +4,6 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -25,39 +23,43 @@ public final class RecipeChain {
     private final List<Recipe> recipes;
 
     /**
-     * Everything this chain could end at instead. In the order the graph reached them, so
-     * intermediates come before finished potions; how they are ordered for display is decided
-     * elsewhere.
-     */
-    private final List<Integer> productOptions;
-
-    /**
-     * A chain with no options offered, for tests and for anywhere the route is all that matters.
+     * A chain starting at the first recipe's primary, so it needs at least one recipe.
      */
     public RecipeChain(List<Recipe> recipes) {
-        this(recipes, Collections.emptyList());
+        this(firstPrimaryOf(recipes), recipes);
     }
 
-    public RecipeChain(List<Recipe> recipes, List<Integer> productOptions) {
-        validateIsOrdered(recipes);
+    /**
+     * @param rootItemId the banked item the chain starts from
+     * @param recipes    the route it takes, in order. Empty when the root itself has been told to
+     *                   stop, which makes the root its own product - the chain still exists so the
+     *                   choice that stopped it can be changed.
+     */
+    public RecipeChain(int rootItemId, List<Recipe> recipes) {
+        validateIsOrdered(rootItemId, recipes);
 
+        this.rootItemId = rootItemId;
         this.recipes = List.copyOf(recipes);
-        this.rootItemId = this.recipes.get(0).getPrimary().getItemId();
-        this.productItemId = this.recipes.get(this.recipes.size() - 1).getOutput().getItemId();
-        this.productOptions = List.copyOf(productOptions);
+        this.productItemId = this.recipes.isEmpty()
+                ? rootItemId
+                : this.recipes.get(this.recipes.size() - 1).getOutput().getItemId();    }
+
+    private static int firstPrimaryOf(List<Recipe> recipes) {
+        if (recipes.isEmpty()) throw new IllegalArgumentException("a chain without recipes needs its root named");
+
+        return recipes.get(0).getPrimary().getItemId();
     }
 
-    private static void validateIsOrdered(List<Recipe> recipes) {
-        if (recipes.isEmpty()) throw new IllegalArgumentException("a chain needs at least one recipe");
+    private static void validateIsOrdered(int rootItemId, List<Recipe> recipes) {
+        int holding = rootItemId;
 
-        for (int i = 1; i < recipes.size(); i++) {
-            final Recipe recipe = recipes.get(i);
-            final int made = recipes.get(i - 1).getOutput().getItemId();
-
-            if (recipe.getPrimary().getItemId() != made) {
+        for (Recipe recipe : recipes) {
+            if (recipe.getPrimary().getItemId() != holding) {
                 throw new IllegalArgumentException("r" + recipe.getId() + " takes item "
-                        + recipe.getPrimary().getItemId() + ", but the chain is holding item " + made);
+                        + recipe.getPrimary().getItemId() + ", but the chain is holding item " + holding);
             }
+
+            holding = recipe.getOutput().getItemId();
         }
     }
 }
