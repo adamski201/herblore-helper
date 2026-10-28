@@ -41,6 +41,22 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
      */
     private static final int LOGO_SIZE = 20;
 
+    /**
+     * RuneLite's own eye pair (from Screen Markers and Loot Tracker, BSD-2), copied in rather than
+     * read from those plugins' folders, which could move. Recoloured to match the cog.
+     */
+    private static final int EYE_SIZE = 14;
+    private static final BufferedImage EYE_OPEN = ImageUtil.resizeImage(
+            ImageUtil.loadImageResource(HerblorePanel.class, "eye_open.png"), EYE_SIZE, EYE_SIZE);
+    private static final BufferedImage EYE_SHUT = ImageUtil.resizeImage(
+            ImageUtil.loadImageResource(HerblorePanel.class, "eye_shut.png"), EYE_SIZE, EYE_SIZE);
+
+    /**
+     * The title's and heading's buttons - the cog and the eye - share these, so they match.
+     */
+    private static final Color BUTTON = new Color(0x8C, 0x8C, 0x8C);
+    private static final Color BUTTON_HOVER = Color.WHITE;
+
     private final ItemManager itemManager;
     private final ClientThread clientThread;
     private final HerbloreApp app;
@@ -89,6 +105,23 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
     private Integer pickingOnRootItemId;
 
     /**
+     * Whether rows switched off are listed. EDT only.
+     */
+    private boolean offRowsShown = true;
+
+    /**
+     * The rows as last arranged, every one including those switched off, so the eye can redraw them
+     * without waiting for a result. EDT only.
+     */
+    private List<Integer> arrangedRootItemIds = List.of();
+
+    /**
+     * The "Recipes" heading, with the eye on its right. Built once, so its hover survives redraws.
+     */
+    private final JPanel recipesHeading;
+    private final JLabel eye = new JLabel();
+
+    /**
      * Whether the panel is open. EDT only.
      */
     private boolean active;
@@ -129,6 +162,8 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
         header.add(noData, BorderLayout.CENTER);
         header.add(xpBar, BorderLayout.SOUTH);
 
+        recipesHeading = recipesHeading();
+
         rows.setOpaque(false);
         secondaries.setOpaque(false);
         secondaries.setBorder(new EmptyBorder(10, 0, 0, 0));
@@ -154,7 +189,7 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
         // a little larger than the cog, which is mostly empty space, keeping the icon's shape
         final JLabel logo = new JLabel(new ImageIcon(ImageUtil.resizeImage(icon, LOGO_SIZE, LOGO_SIZE, true)));
 
-        final JLabel settings = new JLabel(new CogIcon(ColorScheme.LIGHT_GRAY_COLOR));
+        final JLabel settings = new JLabel(new CogIcon(BUTTON));
         settings.setToolTipText("Settings");
         settings.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         settings.addMouseListener(new MouseAdapter() {
@@ -165,12 +200,12 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
 
             @Override
             public void mouseEntered(MouseEvent e) {
-                settings.setIcon(new CogIcon(Color.WHITE));
+                settings.setIcon(new CogIcon(BUTTON_HOVER));
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
-                settings.setIcon(new CogIcon(ColorScheme.LIGHT_GRAY_COLOR));
+                settings.setIcon(new CogIcon(BUTTON));
             }
         });
 
@@ -244,39 +279,14 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
             rowByRootItemId.put(row.getRootItemId(), row);
         }
 
-        final List<Integer> arranged = rowOrder.arrange(
+        arrangedRootItemIds = rowOrder.arrange(
                 rowViews.stream().map(RowView::getRootItemId).collect(Collectors.toList()),
                 pickedOnRootItemId);
-
-        final Map<Integer, RowPanel> panels = new HashMap<>();
-        rows.removeAll();
-        for (int rootItemId : arranged) {
-            final RowView row = rowByRootItemId.get(rootItemId);
-
-            RowPanel panel = panelByRootItemId.get(rootItemId);
-            if (panel == null || !row.equals(shownRowByRootItemId.get(rootItemId))) {
-                panel = new RowPanel(row, expandedRootItemIds.contains(rootItemId),
-                        expanded -> {
-                            if (expanded) expandedRootItemIds.add(rootItemId);
-                            else expandedRootItemIds.remove(rootItemId);
-                        },
-                        this::selectProduct,
-                        this::spriteOf);
-            }
-
-            panels.put(rootItemId, panel);
-            rows.add(panel);
-        }
-
-        shownRowByRootItemId = rowByRootItemId;
-        panelByRootItemId = panels;
+        drawRows(rowByRootItemId);
 
         secondaries.removeAll();
         if (!secondaryViews.isEmpty()) {
-            final JLabel heading = new JLabel("Secondaries");
-            heading.setFont(FontManager.getRunescapeBoldFont());
-            heading.setForeground(Color.WHITE);
-            secondaries.add(heading);
+            secondaries.add(heading("Secondaries"));
 
             for (SecondaryView secondary : secondaryViews) {
                 final int itemId = secondary.getItemId();
@@ -305,6 +315,105 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
                 pickingOnRootItemId = null;
             }
         });
+    }
+
+    /**
+     * Lists the rows as last arranged, leaving out those switched off while the eye is shut. A row
+     * whose view has not changed keeps its panel.
+     */
+    private void drawRows(Map<Integer, RowView> rowByRootItemId) {
+        final Map<Integer, RowPanel> panels = new HashMap<>();
+        rows.removeAll();
+        if (!arrangedRootItemIds.isEmpty()) {
+            rows.add(recipesHeading);
+        }
+
+        for (int rootItemId : arrangedRootItemIds) {
+            final RowView row = rowByRootItemId.get(rootItemId);
+            if (!offRowsShown && row.isSwitchedOff()) continue;
+
+            RowPanel panel = panelByRootItemId.get(rootItemId);
+            if (panel == null || !row.equals(shownRowByRootItemId.get(rootItemId))) {
+                panel = new RowPanel(row, expandedRootItemIds.contains(rootItemId),
+                        expanded -> {
+                            if (expanded) expandedRootItemIds.add(rootItemId);
+                            else expandedRootItemIds.remove(rootItemId);
+                        },
+                        this::selectProduct,
+                        this::spriteOf);
+            }
+
+            panels.put(rootItemId, panel);
+            rows.add(panel);
+        }
+
+        shownRowByRootItemId = rowByRootItemId;
+        panelByRootItemId = panels;
+    }
+
+    /**
+     * "Recipes", with an eye on the right that shows or hides rows switched off.
+     */
+    private JPanel recipesHeading() {
+        updateEye(false);
+        eye.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        eye.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                offRowsShown = !offRowsShown;
+                updateEye(true);
+                drawRows(shownRowByRootItemId);
+                revalidate();
+                repaint();
+            }
+
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                updateEye(true);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                updateEye(false);
+            }
+        });
+
+        final JPanel heading = new JPanel(new BorderLayout());
+        heading.setOpaque(false);
+        heading.add(heading("Recipes"), BorderLayout.WEST);
+        heading.add(eye, BorderLayout.EAST);
+        return heading;
+    }
+
+    private void updateEye(boolean hovered) {
+        final BufferedImage image = offRowsShown ? EYE_OPEN : EYE_SHUT;
+        eye.setIcon(new ImageIcon(tint(image, hovered ? BUTTON_HOVER : BUTTON)));
+        eye.setToolTipText(offRowsShown ? "Hide rows switched off" : "Show rows switched off");
+    }
+
+    /**
+     * The image in one colour, each pixel keeping its own transparency. The eye's shape is drawn
+     * entirely in transparency, so ImageUtil.fillImage - which makes every visible pixel solid -
+     * turns it into a blob.
+     */
+    private static BufferedImage tint(BufferedImage image, Color color) {
+        final BufferedImage tinted = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        final int rgb = color.getRGB() & 0xFFFFFF;
+
+        for (int y = 0; y < image.getHeight(); y++) {
+            for (int x = 0; x < image.getWidth(); x++) {
+                tinted.setRGB(x, y, (image.getRGB(x, y) & 0xFF000000) | rgb);
+            }
+        }
+
+        return tinted;
+    }
+
+    private static JLabel heading(String text) {
+        final JLabel heading = new JLabel(text);
+        heading.setFont(FontManager.getRunescapeBoldFont());
+        heading.setForeground(Color.WHITE);
+        return heading;
     }
 
     private AsyncBufferedImage spriteOf(int itemId) {

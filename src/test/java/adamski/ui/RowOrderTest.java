@@ -14,7 +14,7 @@ public class RowOrderTest {
     private final RowOrder order = new RowOrder();
 
     @Test
-    public void herbsByLevelThenCoralThenCaviarThenTheRest() {
+    public void herbsByLevelThenCoralThenTheRestThenCaviar() {
         final List<Integer> arranged = order.arrange(List.of(
                 ItemID._1DOSE2ENERGY,
                 ItemID.BRUT_CAVIAR,
@@ -26,8 +26,8 @@ public class RowOrderTest {
                 ItemID.GUAM_SEED,
                 ItemID.UNIDENTIFIED_TORSTOL,
                 ItemID.CORAL_PILLAR_FRAG,
-                ItemID.BRUT_CAVIAR,
-                ItemID._1DOSE2ENERGY), arranged);
+                ItemID._1DOSE2ENERGY,
+                ItemID.BRUT_CAVIAR), arranged);
     }
 
     @Test

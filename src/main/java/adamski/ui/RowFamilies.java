@@ -11,16 +11,22 @@ import java.util.Map;
  * Which family a row belongs to, and where that family sits in the panel. A row fed by ranarr seeds
  * is a ranarr row, listed with the other herbs in level order.
  * <p>
- * Display only - a row of no family here is listed after every family, which is visibly slightly
- * off and affects no number.
+ * Display only - a row of no family here is listed where {@link #THE_REST} sits, which is visibly
+ * slightly off at worst and affects no number.
  */
 final class RowFamilies {
     private static final Map<Integer, Integer> FAMILY_BY_ITEM_ID = new HashMap<>();
 
     /**
-     * Families in the order the panel lists them: herbs by level, then coral, then caviar.
+     * Families in the order the panel lists them: herbs by level, then coral, then every row of no
+     * family, then caviar last.
      */
     private static final List<Integer> FAMILY_ORDER = new ArrayList<>();
+
+    /**
+     * Stands in the family order for every row of no family. Not an item id.
+     */
+    private static final int THE_REST = -1;
 
     static {
         family(ItemID.GUAM_LEAF, ItemID.GUAM_SEED, ItemID.UNIDENTIFIED_GUAM, ItemID.GUAMVIAL);
@@ -43,6 +49,8 @@ final class RowFamilies {
         family(ItemID.CORAL_PILLAR, ItemID.CORAL_PILLAR_FRAG, ItemID.PILLARVIAL);
         family(ItemID.CORAL_UMBRAL, ItemID.CORAL_UMBRAL_FRAG, ItemID.UMBRALVIAL);
 
+        FAMILY_ORDER.add(THE_REST);
+
         family(ItemID.BRUT_CAVIAR, ItemID.BRUT_STURGEON);
     }
 
@@ -57,12 +65,12 @@ final class RowFamilies {
     }
 
     /**
-     * @return where this row's family is listed, lower first. A row of no family here comes after
-     * all of them.
+     * @return where this row's family is listed, lower first. A row of no family here sits with the
+     * rest, before caviar.
      */
     static int familyRankOf(int entryItemId) {
         final int rank = FAMILY_ORDER.indexOf(familyOf(entryItemId));
-        return rank < 0 ? Integer.MAX_VALUE : rank;
+        return rank < 0 ? FAMILY_ORDER.indexOf(THE_REST) : rank;
     }
 
     private static void family(int family, int... members) {

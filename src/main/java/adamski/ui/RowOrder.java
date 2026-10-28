@@ -11,8 +11,8 @@ import java.util.Map;
  * <p>
  * A row is known by its root item. Rows still there keep their places and rows that are gone are
  * dropped. A new row created by picking a product goes straight after the row it was picked on;
- * any other new row goes to its family's place - herbs by level, then coral, then caviar, then the
- * rest, earlier stages first within a family.
+ * any other new row goes to its family's place - herbs by level, then coral, then the rest, then
+ * caviar last, earlier stages first within a family.
  * <p>
  * A row whose root moves up as the bank drains - seeds used up, grimy herbs left - is a new row by
  * this measure, but it lands in its family's place, which is where it already was.
