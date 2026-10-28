@@ -100,7 +100,8 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
     private void applyConfig() {
         final HerbloreSettings settings = new HerbloreSettings(
                 config.countSecondariesMadeByRows(),
-                config.countSecondaryPrecursors());
+                config.countSecondaryPrecursors(),
+                config.caviarSuccessRate() / 100.0);
 
         clientThread.invoke(() -> app.applySettings(settings));
     }

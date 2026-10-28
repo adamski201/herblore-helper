@@ -18,6 +18,9 @@ public final class Recipes {
     private static final int NOMINAL_HERB_YIELD = 8;
     private static final int NOMINAL_CORAL_YIELD = 40;
 
+    // The following recipe IDs are referenced outside of this class
+    public static final int CUT_LEAPING_STURGEON_RECIPE_ID = 137;
+
     private static final List<Recipe> RECIPES = Arrays.asList(
             // --- degrime -------------------------------------------------
             new Recipe(1, new Ingredient(ItemID.UNIDENTIFIED_GUAM, 1), NONE, new Ingredient(ItemID.GUAM_LEAF, 1), "degrime", 2.5f, 0),
@@ -275,7 +278,11 @@ public final class Recipes {
             // --- frags -> coral -------------------------------------------------
             new Recipe(133, new Ingredient(ItemID.CORAL_ELKHORN_FRAG, 1), NONE, new Ingredient(ItemID.CORAL_ELKHORN, NOMINAL_CORAL_YIELD), "seed", 0f, 0),
             new Recipe(134, new Ingredient(ItemID.CORAL_PILLAR_FRAG, 1), NONE, new Ingredient(ItemID.CORAL_PILLAR, NOMINAL_CORAL_YIELD), "seed", 0f, 0),
-            new Recipe(135, new Ingredient(ItemID.CORAL_UMBRAL_FRAG, 1), NONE, new Ingredient(ItemID.CORAL_UMBRAL, NOMINAL_CORAL_YIELD), "seed", 0f, 0)
+            new Recipe(135, new Ingredient(ItemID.CORAL_UMBRAL_FRAG, 1), NONE, new Ingredient(ItemID.CORAL_UMBRAL, NOMINAL_CORAL_YIELD), "seed", 0f, 0),
+
+            // --- leaping sturgeon -> caviar ------------------------------
+            // Always succeeds from 80 Cooking; below that, the success rate setting is its yield
+            new Recipe(CUT_LEAPING_STURGEON_RECIPE_ID, new Ingredient(ItemID.BRUT_STURGEON, 1), NONE, new Ingredient(ItemID.BRUT_CAVIAR, 1), "seed", 0f, 0)
     );
 
     /**

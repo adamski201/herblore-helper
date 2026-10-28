@@ -30,4 +30,12 @@ public final class Recipe {
         this.xp = xp;
         this.level = level;
     }
+
+    /**
+     * @return this recipe making {@code quantity} of its output per run instead
+     */
+    public Recipe withOutputQuantity(double quantity) {
+        return new Recipe(id, primary, secondaries.toArray(new Ingredient[0]),
+                new Ingredient(output.getItemId(), quantity), tag, xp, level);
+    }
 }

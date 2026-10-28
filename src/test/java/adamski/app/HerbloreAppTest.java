@@ -602,6 +602,38 @@ public class HerbloreAppTest {
         assertEquals(-40.0, published.get(0).getSecondaryBalance().getNet().get(ItemID._1DOSE2ATTACK), DELTA);
     }
 
+    @Test
+    public void bankedSturgeonJoinsTheCaviarRow() {
+        final Map<Integer, Integer> bank = items(ItemID.BRUT_STURGEON, 10);
+        bank.put(ItemID.BRUT_CAVIAR, 5);
+
+        final List<ChainResult> chains = bank(bank).getChainResults();
+
+        assertEquals(1, chains.size());
+        assertEquals(ItemID.BRUT_STURGEON, chains.get(0).getRootItemId());
+    }
+
+    @Test
+    public void aLowerCaviarSuccessRateScalesTheSturgeonsXp() {
+        final double full = bank(items(ItemID.BRUT_STURGEON, 10)).getTotalXp();
+        assertTrue(full > 0);
+
+        app.applySettings(HerbloreSettings.DEFAULT
+                .withCaviarSuccessRate(0.5));
+
+        assertEquals(full / 2, app.getResult().getTotalXp(), DELTA);
+    }
+
+    @Test
+    public void theCaviarSuccessRateLeavesBankedCaviarAlone() {
+        final double full = bank(items(ItemID.BRUT_CAVIAR, 10)).getTotalXp();
+
+        app.applySettings(HerbloreSettings.DEFAULT
+                .withCaviarSuccessRate(0.5));
+
+        assertEquals(full, app.getResult().getTotalXp(), DELTA);
+    }
+
     /**
      * 10 torstol sent straight to super combat, and 10 irit vials on their default, super attack.
      */

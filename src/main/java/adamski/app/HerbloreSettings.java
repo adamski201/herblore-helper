@@ -6,7 +6,7 @@ import lombok.With;
 @Value
 @With
 public class HerbloreSettings {
-    public static final HerbloreSettings DEFAULT = new HerbloreSettings(true, true);
+    public static final HerbloreSettings DEFAULT = new HerbloreSettings(true, true, 1);
 
     /**
      * Whether secondaries made by a recipe chain count towards the secondaries other chains need
@@ -19,4 +19,9 @@ public class HerbloreSettings {
      * alongside the secondary itself.
      */
     boolean precursorsCounted;
+
+    /**
+     * How often cutting a leaping sturgeon gives caviar, from 0 to 1.
+     */
+    double caviarSuccessRate;
 }

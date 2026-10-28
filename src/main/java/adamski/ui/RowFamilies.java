@@ -43,7 +43,7 @@ final class RowFamilies {
         family(ItemID.CORAL_PILLAR, ItemID.CORAL_PILLAR_FRAG, ItemID.PILLARVIAL);
         family(ItemID.CORAL_UMBRAL, ItemID.CORAL_UMBRAL_FRAG, ItemID.UMBRALVIAL);
 
-        family(ItemID.BRUT_CAVIAR);
+        family(ItemID.BRUT_CAVIAR, ItemID.BRUT_STURGEON);
     }
 
     private RowFamilies() {

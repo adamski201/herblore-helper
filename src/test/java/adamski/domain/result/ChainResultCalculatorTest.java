@@ -296,6 +296,18 @@ public class ChainResultCalculatorTest {
         assertTrue(cascade(1, 0, C_ONE_TO_TWO).isEmpty());
     }
 
+    @Test
+    public void aFractionalOutputScalesEverythingAfterIt() {
+        // item 1 -> 2 succeeds half the time, so 4 of item 1 make 2 of item 2
+        final Recipe halfOneToTwo = new Recipe(10, new Ingredient(1, 1), new Ingredient[0],
+                new Ingredient(2, 0.5), "test", 0f, 0);
+        final List<RecipeRun> runs = cascade(1, 4, halfOneToTwo, C_TWO_TO_THREE);
+
+        assertRun(runs.get(0), halfOneToTwo, 4);
+        assertEquals(2.0, runs.get(0).getOutputQuantity(), DELTA);
+        assertRun(runs.get(1), C_TWO_TO_THREE, 2);
+    }
+
     // --- secondary demand ---------------------------------------------------
 
     // items 50 and 51 are the secondaries under test

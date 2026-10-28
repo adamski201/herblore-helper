@@ -5,6 +5,8 @@ import adamski.domain.route.RecipeSelection;
 import adamski.domain.route.RecipeGraph;
 import adamski.domain.route.RecipeSelector;
 import adamski.domain.result.ChainResultCalculator;
+import adamski.domain.result.YieldOverrides;
+import adamski.data.Recipes;
 import adamski.domain.ItemQuantities;
 import adamski.domain.ItemSource;
 import adamski.domain.SecondaryPrecursor;
@@ -132,7 +134,13 @@ public class HerbloreApp {
         final var ownedItems = mergeSources(store.itemsBySource());
 
         // Determine which recipe chains will be used (based on product selection)
-        final var recipeChains = chainResolver.resolve(ownedItems, store.selection());
+        final var routedChains = chainResolver.resolve(ownedItems, store.selection());
+
+        // Override recipe yields with those configured by player's settings
+        final var recipeYieldOverrides = Map.of(
+                Recipes.CUT_LEAPING_STURGEON_RECIPE_ID, settings.getCaviarSuccessRate()
+        );
+        final var recipeChains = YieldOverrides.apply(routedChains, recipeYieldOverrides);
 
         // Calculate the XP & quantity result for each chain
         final var chainResults = ChainResultCalculator.calculate(recipeChains, ownedItems);
