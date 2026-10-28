@@ -33,6 +33,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class HerblorePanel extends PluginPanel implements ResultListener {
@@ -107,7 +108,12 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
     /**
      * Whether rows switched off are listed. EDT only.
      */
-    private boolean offRowsShown = true;
+    private boolean offRowsShown;
+
+    /**
+     * Saves the eye's state when it is clicked, so it is the same next session. Called on the EDT.
+     */
+    private final Consumer<Boolean> offRowsShownSaver;
 
     /**
      * The rows as last arranged, every one including those switched off, so the eye can redraw them
@@ -138,13 +144,17 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
      *                             what a row's menu offers. Fixed by the table, so given once here.
      * @param icon                 the plugin's icon, for the title
      * @param openSettings         opens this plugin's settings. Called on the EDT.
+     * @param offRowsShown         whether rows switched off are listed, as saved last session
+     * @param offRowsShownSaver    saves that when the eye is clicked. Called on the EDT.
      */
     public HerblorePanel(ItemManager itemManager, ClientThread clientThread, HerbloreApp app,
                          Map<Integer, List<Recipe>> productRecipesByItem, BufferedImage icon,
-                         Runnable openSettings) {
+                         Runnable openSettings, boolean offRowsShown, Consumer<Boolean> offRowsShownSaver) {
         this.itemManager = itemManager;
         this.clientThread = clientThread;
         this.app = app;
+        this.offRowsShown = offRowsShown;
+        this.offRowsShownSaver = offRowsShownSaver;
         this.rowViewFactory = new RowViewFactory(this::name, productRecipesByItem);
 
         setLayout(new BorderLayout());
@@ -361,6 +371,7 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
             @Override
             public void mouseClicked(MouseEvent e) {
                 offRowsShown = !offRowsShown;
+                offRowsShownSaver.accept(offRowsShown);
                 updateEye(true);
                 drawRows(shownRowByRootItemId);
                 revalidate();

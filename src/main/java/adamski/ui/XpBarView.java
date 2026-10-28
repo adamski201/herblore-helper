@@ -14,9 +14,22 @@ class XpBarView {
     int bankedLevel;
 
     /**
+     * The level the fill is heading for - one past the banked level, or the banked level itself at
+     * the last level.
+     */
+    int nextLevel;
+
+    /**
      * How far through the banked level towards the next, 0 to 1. Full at the last level.
      */
     double progress;
+
+    /**
+     * Where the bar starts filling from: how far through the level the player already is, when the
+     * bank gains no level - so the bank's own share shows on top of it. 0 once a level is gained,
+     * since the whole bar is then a level the bank reaches.
+     */
+    double startProgress;
 
     double bankedXp;
 
@@ -24,8 +37,20 @@ class XpBarView {
         final int afterXp = (int) Math.min(Experience.MAX_SKILL_XP, currentXp + Math.max(0, bankedXp));
         final int bankedLevel = Experience.getLevelForXp(afterXp);
 
-        return new XpBarView(Experience.getLevelForXp(currentXp), bankedLevel,
-                progressThrough(bankedLevel, afterXp), bankedXp);
+        final int currentLevel = Experience.getLevelForXp(currentXp);
+
+        return new XpBarView(currentLevel, bankedLevel,
+                Math.min(bankedLevel + 1, Experience.MAX_VIRT_LEVEL),
+                progressThrough(bankedLevel, afterXp),
+                bankedLevel > currentLevel ? 0 : progressThrough(currentLevel, currentXp),
+                bankedXp);
+    }
+
+    /**
+     * @return whether the bank takes the player up at least one level
+     */
+    boolean levelGained() {
+        return bankedLevel > currentLevel;
     }
 
     private static double progressThrough(int level, int xp) {

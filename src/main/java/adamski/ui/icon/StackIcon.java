@@ -30,6 +30,13 @@ public final class StackIcon implements Icon {
     private final Color color;
 
     /**
+     * The sprite alone, with no quantity drawn on it.
+     */
+    public StackIcon(AsyncBufferedImage sprite) {
+        this(sprite, 0, false);
+    }
+
+    /**
      * @param quantity rounded to a whole number; nothing is drawn for less than one
      * @param doses    whether the stack is a potion's doses, which keep a decimal up to 50k
      */

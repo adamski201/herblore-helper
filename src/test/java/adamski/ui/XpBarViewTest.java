@@ -4,6 +4,8 @@ import net.runelite.api.Experience;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class XpBarViewTest {
     private static final double DELTA = 1e-9;
@@ -46,14 +48,47 @@ public class XpBarViewTest {
     }
 
     @Test
+    public void theFillHeadsForTheLevelAfterTheBankedOne() {
+        final XpBarView view = XpBarView.of(Experience.getXpForLevel(88), 0.5 * Experience.getXpForLevel(96));
+
+        assertEquals(view.getBankedLevel() + 1, view.getNextLevel());
+    }
+
+    @Test
+    public void atTheLastLevelThereIsNoNextOne() {
+        assertEquals(Experience.MAX_VIRT_LEVEL, XpBarView.of(Experience.MAX_SKILL_XP, 0).getNextLevel());
+    }
+
+    @Test
+    public void gainingALevelFillsFromTheStart() {
+        final XpBarView view = XpBarView.of(Experience.getXpForLevel(88), 0.5 * Experience.getXpForLevel(96));
+
+        assertTrue(view.levelGained());
+        assertEquals(0, view.getStartProgress(), DELTA);
+    }
+
+    @Test
+    public void withinOneLevelTheBankFillsOnTopOfWhatIsHeld() {
+        final int start = Experience.getXpForLevel(80);
+        final int span = Experience.getXpForLevel(81) - start;
+
+        // a quarter through the level already, the bank adds another quarter
+        final XpBarView view = XpBarView.of(start + span / 4, span / 4.0);
+
+        assertFalse(view.levelGained());
+        assertEquals(0.25, view.getStartProgress(), 0.001);
+        assertEquals(0.5, view.getProgress(), 0.001);
+    }
+
+    @Test
     public void theBankedXpIsKeptAsIs() {
         assertEquals(1_234.5, XpBarView.of(0, 1_234.5).getBankedXp(), DELTA);
     }
 
     @Test
-    public void bankedXpIsShortenedWithItsSuffix() {
-        assertEquals("+3.179m xp banked", XpBar.bankedText(3_178_790));
-        assertEquals("+450.1k xp banked", XpBar.bankedText(450_123));
-        assertEquals("+820 xp banked", XpBar.bankedText(820));
+    public void bankedXpIsShortened() {
+        assertEquals("+3.179m xp", XpBar.xpText(3_178_790));
+        assertEquals("+450.1k xp", XpBar.xpText(450_123));
+        assertEquals("+820 xp", XpBar.xpText(820));
     }
 }

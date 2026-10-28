@@ -120,8 +120,9 @@ class RowPanel extends JPanel {
         final JLabel rootIcon = new JLabel();
         rootIcon.setHorizontalAlignment(SwingConstants.CENTER);
         rootIcon.setPreferredSize(ROOT_ICON_CELL);
-        setStack(rootIcon, iconOf.apply(row.getRootItemId()), row.getRootQuantity(),
-                PotionDoses.isPotion(row.getRootItemId()));
+        // no quantity on the root: it counts the root item alone, not everything banked on the row,
+        // so it says little - the tooltip and the breakdown list what is held
+        setIcon(rootIcon, new StackIcon(iconOf.apply(row.getRootItemId())));
 
         final JLabel rootName = new JLabel(row.getRootItemName());
         rootName.setFont(FontManager.getRunescapeBoldFont());
@@ -238,7 +239,10 @@ class RowPanel extends JPanel {
     }
 
     private static void setStack(JLabel label, AsyncBufferedImage sprite, double quantity, boolean doses) {
-        final StackIcon icon = new StackIcon(sprite, quantity, doses);
+        setIcon(label, new StackIcon(sprite, quantity, doses));
+    }
+
+    private static void setIcon(JLabel label, StackIcon icon) {
         label.setIcon(icon);
         icon.repaintWhenLoaded(label);
     }

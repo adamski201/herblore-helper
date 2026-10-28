@@ -21,6 +21,22 @@ public interface HerbloreConfig extends net.runelite.client.config.Config
     )
     String SEED_YIELDS = "seedYields";
 
+    /**
+     * Whether the panel hides disabled recipe rows (hidden as toggled via panel itself)
+     */
+    String OFF_ROWS_SHOWN = "offRowsShown";
+
+    @ConfigItem(
+        keyName = OFF_ROWS_SHOWN,
+        name = "Show rows switched off",
+        description = "Whether the panel lists rows set to make nothing",
+        hidden = true
+    )
+    default boolean offRowsShown()
+    {
+        return true;
+    }
+
     @ConfigItem(
         keyName = "countSecondariesMadeByRows",
         name = "Count secondaries made by rows",

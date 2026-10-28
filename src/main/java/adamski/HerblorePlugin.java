@@ -59,6 +59,8 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
     private RecipeGraph graph;
     @Inject
     private HerbloreConfig config;
+    @Inject
+    private ConfigManager configManager;
 
     private final List<Object> subscribers = new ArrayList<>();
 
@@ -69,7 +71,8 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
     protected void startUp() throws Exception {
         final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "icon.png");
         panel = new HerblorePanel(itemManager, clientThread, app, graph.findProductRecipesByItem(), icon,
-                this::openSettings);
+                this::openSettings, config.offRowsShown(),
+                shown -> configManager.setConfiguration(HerbloreConfig.GROUP, HerbloreConfig.OFF_ROWS_SHOWN, shown));
 
         navButton = NavigationButton.builder().tooltip("Herblore Helper").icon(icon).priority(100).panel(panel).build();
 
