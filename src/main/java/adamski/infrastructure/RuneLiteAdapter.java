@@ -3,6 +3,7 @@ package adamski.infrastructure;
 import adamski.app.HerbloreApp;
 import adamski.data.Recipes;
 import adamski.data.PotionDoses;
+import adamski.data.SecondaryPrecursors;
 import adamski.domain.ItemQuantities;
 import adamski.domain.ItemSource;
 import net.runelite.api.Item;
@@ -95,7 +96,7 @@ public class RuneLiteAdapter {
             final var unnotedId = itemManager.canonicalize(id); // Merge noted items into unnoted form
             final var doses = item.getQuantity() * PotionDoses.doses(unnotedId);
             final var canonicalId = PotionDoses.canonicalId(unnotedId); // Reduce dose variants to 1-dose units
-            if (!Recipes.isRelevantItem(canonicalId)) continue; // Filter for domain-relevant items
+            if (!Recipes.isRelevantItem(canonicalId) && !SecondaryPrecursors.isPrecursor(canonicalId)) continue; // Filter for domain-relevant items
 
             items.merge(canonicalId, doses, Integer::sum);
         }

@@ -6,7 +6,6 @@ import adamski.domain.Recipe;
 import adamski.app.HerbloreResult;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.game.ItemManager;
-import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
@@ -39,6 +38,11 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
      * Which rows are open, by root item, so they stay open when the rows are rebuilt. EDT only.
      */
     private final Set<Integer> expandedRootItemIds = new HashSet<>();
+
+    /**
+     * Which secondaries are open, by item, for the same reason. EDT only.
+     */
+    private final Set<Integer> expandedSecondaryItemIds = new HashSet<>();
 
     /**
      * Where each row sits, kept between results. EDT only.
@@ -120,11 +124,11 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
                 .map(rowViewFactory::rowOf)
                 .collect(Collectors.toList());
 
-        final List<RowView.Line> secondaryLines = rowViewFactory.secondaryLinesOf(result.getSecondaryBalance());
+        final List<SecondaryView> secondaryViews = rowViewFactory.secondariesOf(result.getSecondaryBalance());
         final Integer pickedOnRootItemId = pickingOnRootItemId;
 
         SwingUtilities.invokeLater(() -> {
-            final Runnable render = () -> render(totalText, rowViews, pickedOnRootItemId, secondaryLines);
+            final Runnable render = () -> render(totalText, rowViews, pickedOnRootItemId, secondaryViews);
 
             if (active) {
                 render.run();
@@ -150,7 +154,7 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
     }
 
     private void render(String totalText, List<RowView> rowViews, Integer pickedOnRootItemId,
-                        List<RowView.Line> secondaryLines) {
+                        List<SecondaryView> secondaryViews) {
         total.setText(totalText);
 
         final Map<Integer, RowView> rowByRootItemId = new HashMap<>();
@@ -186,17 +190,19 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
         panelByRootItemId = panels;
 
         secondaries.removeAll();
-        if (!secondaryLines.isEmpty()) {
+        if (!secondaryViews.isEmpty()) {
             final JLabel heading = new JLabel("Secondaries");
             heading.setFont(FontManager.getRunescapeBoldFont());
             heading.setForeground(Color.WHITE);
             secondaries.add(heading);
 
-            for (RowView.Line line : secondaryLines) {
-                final Color color = line.getAmount() < 0
-                        ? ColorScheme.PROGRESS_ERROR_COLOR
-                        : ColorScheme.PROGRESS_COMPLETE_COLOR;
-                secondaries.add(RowPanel.lineOf(line.getName(), Amounts.abbreviate(line.getAmount()), color));
+            for (SecondaryView secondary : secondaryViews) {
+                final int itemId = secondary.getItemId();
+                secondaries.add(new SecondaryPanel(secondary, expandedSecondaryItemIds.contains(itemId),
+                        expanded -> {
+                            if (expanded) expandedSecondaryItemIds.add(itemId);
+                            else expandedSecondaryItemIds.remove(itemId);
+                        }));
             }
         }
 

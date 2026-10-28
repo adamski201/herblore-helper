@@ -8,13 +8,10 @@ import adamski.domain.route.RecipeChain;
 import adamski.domain.route.RecipeChainResolver;
 import adamski.domain.route.RecipeGraph;
 import adamski.domain.route.RecipeSelection;
-import adamski.domain.yield.RecipeRun;
-import adamski.domain.yield.RecipeYieldCalculator;
 
 import net.runelite.api.gameval.ItemID;
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -197,19 +194,175 @@ public class ChainResultCalculatorTest {
                 .flatMap(chain -> chain.getRecipes().stream())
                 .collect(Collectors.toList());
 
-        final List<RecipeRun> ungrouped = new ArrayList<>();
-        owned.forEach((itemId, quantity) ->
-                ungrouped.addAll(RecipeYieldCalculator.cascade(itemId, quantity, everyRecipe)));
-
         final double grouped = ChainResultCalculator.calculate(chains, owned).stream()
                 .mapToDouble(ChainResult::getXp)
                 .sum();
 
-        final double ungroupedXp = ungrouped.stream()
-                .mapToDouble(run -> run.getRuns() * run.getRecipe().getXp())
-                .sum();
+        assertEquals(flatXp(owned, everyRecipe), grouped, 0.0001);
+    }
 
-        assertEquals(ungroupedXp, grouped, 0.0001);
+    /**
+     * Runs each owned item through every recipe at once, in order, with no notion of chains -
+     * deliberately independent of cascade, so the test above compares two different methods.
+     */
+    private static double flatXp(ItemQuantities owned, List<Recipe> everyRecipe) {
+        double xp = 0;
+
+        for (int itemId : owned.itemIds()) {
+            final Map<Integer, Double> held = new HashMap<>();
+            held.put(itemId, owned.get(itemId));
+
+            for (Recipe recipe : everyRecipe) {
+                final double quantity = held.getOrDefault(recipe.getPrimary().getItemId(), 0d);
+                if (quantity == 0) continue;
+
+                final double runs = quantity / recipe.getPrimary().getQuantity();
+                xp += runs * recipe.getXp();
+                held.put(recipe.getOutput().getItemId(), runs * recipe.getOutput().getQuantity());
+            }
+        }
+
+        return xp;
+    }
+
+    // --- cascade ------------------------------------------------------------
+    // Its own synthetic table: 1 -> 2 -> 3, and 3 -> 5 taking two at a time and making two.
+
+    private static final Recipe C_ONE_TO_TWO = recipe(10, 1, 1, 2, 1);
+    private static final Recipe C_TWO_TO_THREE = recipe(11, 2, 1, 3, 1);
+    private static final Recipe C_PAIRS_TO_FIVE = recipe(13, 3, 2, 5, 2);
+
+    @Test
+    public void oneRecipeRunsAsOftenAsItsPrimaryAllows() {
+        assertRun(cascade(3, 9, C_PAIRS_TO_FIVE).get(0), C_PAIRS_TO_FIVE, 4.5);
+    }
+
+    @Test
+    public void oneRecipeYieldsItsOutputQuantityPerRun() {
+        // 9 of item 3 is 4.5 runs of a recipe making 2 at a time
+        assertEquals(9.0, cascade(3, 9, C_PAIRS_TO_FIVE).get(0).getOutputQuantity(), DELTA);
+    }
+
+    @Test
+    public void producedItemsFeedTheNextRecipe() {
+        final List<RecipeRun> runs = cascade(1, 4, C_ONE_TO_TWO, C_TWO_TO_THREE);
+
+        assertEquals(2, runs.size());
+        assertRun(runs.get(0), C_ONE_TO_TWO, 4);
+        assertRun(runs.get(1), C_TWO_TO_THREE, 4);
+    }
+
+    @Test
+    public void anItemPartwayAlongStartsWhereItSits() {
+        final List<RecipeRun> runs = cascade(2, 4, C_ONE_TO_TWO, C_TWO_TO_THREE);
+
+        assertEquals(1, runs.size());
+        assertRun(runs.get(0), C_TWO_TO_THREE, 4);
+    }
+
+    @Test
+    public void theProductRunsNothing() {
+        assertTrue(cascade(3, 5, C_ONE_TO_TWO, C_TWO_TO_THREE).isEmpty());
+    }
+
+    @Test
+    public void aStoppedRootRunsNothing() {
+        assertTrue(ChainResultCalculator.cascade(2, 5, new RecipeChain(2, Collections.emptyList())).isEmpty());
+    }
+
+    @Test
+    public void anItemOffTheChainRunsNothing() {
+        assertTrue(cascade(99, 5, C_ONE_TO_TWO, C_TWO_TO_THREE).isEmpty());
+    }
+
+    @Test
+    public void runsAreFractionalWhenThePrimaryQuantityDoesNotDivide() {
+        assertRun(cascade(3, 3, C_PAIRS_TO_FIVE).get(0), C_PAIRS_TO_FIVE, 1.5);
+    }
+
+    @Test
+    public void outputQuantityMultipliesThroughTheChain() {
+        // one of item 1 makes three of item 2, so the next recipe runs three times
+        final Recipe oneToThreeOfTwo = recipe(14, 1, 1, 2, 3);
+
+        final List<RecipeRun> runs = cascade(1, 2, oneToThreeOfTwo, C_TWO_TO_THREE);
+
+        assertRun(runs.get(0), oneToThreeOfTwo, 2);
+        assertRun(runs.get(1), C_TWO_TO_THREE, 6);
+    }
+
+    @Test
+    public void zeroQuantityYieldsNothing() {
+        assertTrue(cascade(1, 0, C_ONE_TO_TWO).isEmpty());
+    }
+
+    // --- secondary demand ---------------------------------------------------
+
+    // items 50 and 51 are the secondaries under test
+    private static final Recipe NEEDS_ONE_OF_50 = needing(20, 1, new Ingredient(50, 1));
+    private static final Recipe NEEDS_TWO_OF_50 = needing(21, 2, new Ingredient(50, 2));
+    private static final Recipe NEEDS_BOTH = needing(22, 3, new Ingredient(50, 1), new Ingredient(51, 3));
+
+    @Test
+    public void demandIsRunsTimesSecondaryQuantity() {
+        assertEquals(12.0, demandOf(run(NEEDS_TWO_OF_50, 6)).get(50), DELTA);
+    }
+
+    @Test
+    public void demandSumsAcrossRecipes() {
+        assertEquals(14.0, demandOf(run(NEEDS_ONE_OF_50, 4), run(NEEDS_TWO_OF_50, 5)).get(50), DELTA);
+    }
+
+    @Test
+    public void aRecipeCanDemandSeveralSecondaries() {
+        final ItemQuantities demand = demandOf(run(NEEDS_BOTH, 2));
+
+        assertEquals(2.0, demand.get(50), DELTA);
+        assertEquals(6.0, demand.get(51), DELTA);
+    }
+
+    @Test
+    public void fractionalRunsDemandFractionally() {
+        assertEquals(3.0, demandOf(run(NEEDS_TWO_OF_50, 1.5)).get(50), DELTA);
+    }
+
+    @Test
+    public void recipesWithoutSecondariesDemandNothing() {
+        assertTrue(demandOf(run(C_ONE_TO_TWO, 100)).isEmpty());
+    }
+
+    @Test
+    public void noRunsDemandNothing() {
+        assertTrue(demandOf().isEmpty());
+    }
+
+    private static final double DELTA = 0.0001;
+
+    private static List<RecipeRun> cascade(int itemId, int quantity, Recipe... orderedRecipes) {
+        return ChainResultCalculator.cascade(itemId, quantity, new RecipeChain(Arrays.asList(orderedRecipes)));
+    }
+
+    private static ItemQuantities demandOf(RecipeRun... runs) {
+        return ChainResultCalculator.sumSecondaryDemand(Arrays.asList(runs));
+    }
+
+    private static RecipeRun run(Recipe recipe, double runs) {
+        return new RecipeRun(recipe, runs);
+    }
+
+    private static void assertRun(RecipeRun actual, Recipe expected, double runs) {
+        assertEquals(expected, actual.getRecipe());
+        assertEquals(runs, actual.getRuns(), DELTA);
+    }
+
+    private static Recipe recipe(int id, int primaryId, int primaryQty, int outputId, int outputQty) {
+        return new Recipe(id, new Ingredient(primaryId, primaryQty), new Ingredient[0],
+                new Ingredient(outputId, outputQty), "test", 0f, 0);
+    }
+
+    private static Recipe needing(int id, int primaryId, Ingredient... secondaries) {
+        return new Recipe(id, new Ingredient(primaryId, 1), secondaries,
+                new Ingredient(primaryId + 100, 1), "test", 0f, 0);
     }
 
     private static List<ChainResult> calculate(ItemQuantities owned) {

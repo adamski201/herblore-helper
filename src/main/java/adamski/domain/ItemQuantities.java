@@ -11,9 +11,6 @@ import java.util.function.BiConsumer;
 
 /**
  * How much of each item, keyed by item id and measured in 1-dose units.
- * <p>
- * Fractional, because a recipe can run a fraction of a time, and signed, because the same shape
- * carries differences - a secondary shortfall and a bank delta are both negative quantities.
  */
 @EqualsAndHashCode
 @ToString

@@ -7,32 +7,26 @@ import adamski.domain.route.RecipeSelection;
 import javax.inject.Singleton;
 import java.util.Collections;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.Map;
 
 @Singleton
 public class HerbloreStore {
     private final Map<ItemSource, ItemQuantities> itemsBySource = new EnumMap<>(ItemSource.class);
     private RecipeSelection selection = RecipeSelection.ALL_DEFAULT;
+    private HerbloreSettings settings = HerbloreSettings.DEFAULT;
 
     /**
-     * @return what changed per source, as signed quantities. Empty if nothing changed.
+     * @return true if any source differs from what is already held
      */
-    public Map<ItemSource, ItemQuantities> updateItems(Map<ItemSource, ItemQuantities> incoming) {
-        final Map<ItemSource, ItemQuantities> delta = new EnumMap<>(ItemSource.class);
+    public boolean updateItems(Map<ItemSource, ItemQuantities> incoming) {
+        boolean changed = false;
 
         for (Map.Entry<ItemSource, ItemQuantities> entry : incoming.entrySet()) {
-            final ItemSource source = entry.getKey();
-            final ItemQuantities next = entry.getValue();
-            final ItemQuantities prev = itemsBySource.get(source);
-
-            if (next.equals(prev)) continue;
-
-            delta.put(source, prev == null ? ItemQuantities.EMPTY : diff(prev, next));
-            itemsBySource.put(source, next);
+            final ItemQuantities previous = itemsBySource.put(entry.getKey(), entry.getValue());
+            if (!entry.getValue().equals(previous)) changed = true;
         }
 
-        return delta;
+        return changed;
     }
 
     /**
@@ -60,18 +54,21 @@ public class HerbloreStore {
         return selection;
     }
 
-    private static ItemQuantities diff(ItemQuantities prev, ItemQuantities next) {
-        final Map<Integer, Double> changes = new HashMap<>();
+    /**
+     * @return true if it differs from what is already held
+     */
+    public boolean updateSettings(HerbloreSettings next) {
+        if (next.equals(settings)) return false;
 
-        next.forEach((itemId, quantity) -> {
-            final double change = quantity - prev.get(itemId);
-            if (change != 0) changes.put(itemId, change);
-        });
+        settings = next;
 
-        prev.forEach((itemId, quantity) -> {
-            if (!next.itemIds().contains(itemId)) changes.put(itemId, -quantity);
-        });
+        return true;
+    }
 
-        return ItemQuantities.of(changes);
+    /**
+     * @return the player's settings. Immutable, so it is a snapshot by construction.
+     */
+    public HerbloreSettings settings() {
+        return settings;
     }
 }

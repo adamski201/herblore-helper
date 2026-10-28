@@ -7,6 +7,8 @@ import adamski.domain.route.RecipeSelector;
 import adamski.domain.result.ChainResultCalculator;
 import adamski.domain.ItemQuantities;
 import adamski.domain.ItemSource;
+import adamski.domain.SecondaryPrecursor;
+import adamski.domain.balance.SecondaryBalanceCalculator;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -38,14 +40,30 @@ public class HerbloreApp {
 
     private final RecipeSelector selector;
 
+    private final List<SecondaryPrecursor> precursors;
+
     @Getter
     private volatile HerbloreResult result;
 
     @Inject
-    public HerbloreApp(HerbloreStore store, RecipeGraph graph) {
+    public HerbloreApp(HerbloreStore store, RecipeGraph graph, List<SecondaryPrecursor> precursors) {
         this.store = store;
         this.chainResolver = new RecipeChainResolver(graph);
         this.selector = new RecipeSelector(graph);
+        this.precursors = List.copyOf(precursors);
+    }
+
+    /**
+     * Replaces every setting at once, and republishes against what is already held if any changed.
+     */
+    public void applySettings(HerbloreSettings settings) {
+        if (!store.updateSettings(settings)) return;
+
+        log.debug("settings changed: {}", settings);
+        if (result == null) return;
+
+        result = recalculate();
+        publishResult(result);
     }
 
     /**
@@ -70,7 +88,7 @@ public class HerbloreApp {
     }
 
     /**
-     * Replaces the whole selection with one saved earlier.
+     * Replaces the whole selection with one saved earlier, and republishes the result.
      */
     public void restoreSelection(RecipeSelection saved) {
         if (!store.updateSelection(saved)) return;
@@ -83,10 +101,9 @@ public class HerbloreApp {
     }
 
     public void updateItems(Map<ItemSource, ItemQuantities> changed) {
-        final var delta = store.updateItems(changed);
-        if (delta.isEmpty()) return;
+        if (!store.updateItems(changed)) return;
 
-        log.debug("sources changed: {}", delta.keySet());
+        log.debug("sources read: {}", changed.keySet());
 
         result = recalculate();
         publishResult(result);
@@ -109,6 +126,8 @@ public class HerbloreApp {
     }
 
     private HerbloreResult recalculate() {
+        final var settings = store.settings();
+
         // Gather all owned items across item sources e.g. bank, seed vault
         final var ownedItems = mergeSources(store.itemsBySource());
 
@@ -118,7 +137,14 @@ public class HerbloreApp {
         // Calculate the XP & quantity result for each chain
         final var chainResults = ChainResultCalculator.calculate(recipeChains, ownedItems);
 
-        return new HerbloreResult(ownedItems, chainResults);
+        // Calculate the total surplus/deficit of secondaries
+        final var secondaryBalance = SecondaryBalanceCalculator.calculate(
+                chainResults,
+                ownedItems,
+                settings.isChainProductsCounted(),
+                settings.isPrecursorsCounted() ? precursors : List.of());
+
+        return new HerbloreResult(ownedItems, chainResults, secondaryBalance);
     }
 
     private static ItemQuantities mergeSources(Map<ItemSource, ItemQuantities> snapshot) {

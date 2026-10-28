@@ -165,7 +165,7 @@ public class RecipeChainResolverTest {
     }
 
     /**
-     * What RecipeYieldCalculator does with the chains it is given.
+     * What ChainResultCalculator.cascade does with the chains it is given.
      */
     private static List<Recipe> recipesOf(List<RecipeChain> chains) {
         return chains.stream()

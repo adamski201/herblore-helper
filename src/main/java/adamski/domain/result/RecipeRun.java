@@ -1,4 +1,4 @@
-package adamski.domain.yield;
+package adamski.domain.result;
 
 import adamski.domain.Recipe;
 import lombok.Value;
@@ -10,10 +10,6 @@ import lombok.Value;
 public class RecipeRun {
     Recipe recipe;
     double runs;
-
-    /**
-     * What those runs make, in 1-dose units. Resolved here rather than recomputed by every reader.
-     */
     double outputQuantity;
 
     public RecipeRun(Recipe recipe, double runs) {

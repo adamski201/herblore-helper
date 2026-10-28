@@ -1,8 +1,11 @@
 package adamski;
 
 import adamski.app.HerbloreApp;
+import adamski.app.HerbloreSettings;
 import adamski.data.Recipes;
+import adamski.data.SecondaryPrecursors;
 import adamski.domain.route.RecipeGraph;
+import adamski.domain.SecondaryPrecursor;
 import adamski.infrastructure.RuneLiteAdapter;
 import adamski.infrastructure.SelectionPersistence;
 import adamski.ui.HerblorePanel;
@@ -11,6 +14,8 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
@@ -42,6 +47,8 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
     private HerbloreApp app;
     @Inject
     private RecipeGraph graph;
+    @Inject
+    private HerbloreConfig config;
 
     private final List<Object> subscribers = new ArrayList<>();
 
@@ -61,6 +68,7 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
 
         // already logged in when the plugin is switched on, so no profile change is coming
         clientThread.invoke(selectionPersistence::load);
+        applyConfig();
 
         // LAST!
         subscribers.add(adapter);
@@ -81,6 +89,22 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
         navButton = null;
     }
 
+    @Subscribe
+    public void onConfigChanged(ConfigChanged event) {
+        // ignore events from other plugins
+        if (!HerbloreConfig.GROUP.equals(event.getGroup())) return;
+
+        applyConfig();
+    }
+
+    private void applyConfig() {
+        final HerbloreSettings settings = new HerbloreSettings(
+                config.countSecondariesMadeByRows(),
+                config.countSecondaryPrecursors());
+
+        clientThread.invoke(() -> app.applySettings(settings));
+    }
+
     @Provides
     HerbloreConfig provideConfig(ConfigManager configManager) {
         return configManager.getConfig(HerbloreConfig.class);
@@ -90,5 +114,11 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
     @Singleton
     RecipeGraph provideRecipeGraph() {
         return new RecipeGraph(Recipes.all());
+    }
+
+    @Provides
+    @Singleton
+    List<SecondaryPrecursor> providePrecursors() {
+        return SecondaryPrecursors.all();
     }
 }

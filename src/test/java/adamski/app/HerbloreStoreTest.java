@@ -6,7 +6,6 @@ import adamski.domain.route.RecipeSelection;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
@@ -24,67 +23,26 @@ public class HerbloreStoreTest {
     }
 
     @Test
-    public void firstReadIsABaselineNotAGain() {
-        final var delta = store.updateItems(batch(ItemSource.Bank, items(1, 10, 2, 20)));
-
-        assertEquals(Collections.singleton(ItemSource.Bank), delta.keySet());
-        assertTrue("first read must not report the whole bank as gained", delta.get(ItemSource.Bank).isEmpty());
+    public void aFirstReadIsAChange() {
+        assertTrue(store.updateItems(batch(ItemSource.Bank, items(1, 10, 2, 20))));
     }
 
     @Test
-    public void unchangedResubmissionYieldsNothing() {
+    public void anUnchangedResubmissionIsNoChange() {
         store.updateItems(batch(ItemSource.Bank, items(1, 10)));
 
-        assertTrue(store.updateItems(batch(ItemSource.Bank, items(1, 10))).isEmpty());
+        assertFalse(store.updateItems(batch(ItemSource.Bank, items(1, 10))));
     }
 
     @Test
-    public void increaseIsPositive() {
+    public void aMovedQuantityIsAChange() {
         store.updateItems(batch(ItemSource.Bank, items(1, 10)));
 
-        final var delta = store.updateItems(batch(ItemSource.Bank, items(1, 13)));
-
-        assertEquals(items(1, 3), delta.get(ItemSource.Bank));
+        assertTrue(store.updateItems(batch(ItemSource.Bank, items(1, 13))));
     }
 
     @Test
-    public void decreaseIsNegative() {
-        store.updateItems(batch(ItemSource.Bank, items(1, 10)));
-
-        final var delta = store.updateItems(batch(ItemSource.Bank, items(1, 4)));
-
-        assertEquals(items(1, -6), delta.get(ItemSource.Bank));
-    }
-
-    @Test
-    public void newItemIsItsFullQuantity() {
-        store.updateItems(batch(ItemSource.Bank, items(1, 10)));
-
-        final var delta = store.updateItems(batch(ItemSource.Bank, items(1, 10, 2, 7)));
-
-        assertEquals(items(2, 7), delta.get(ItemSource.Bank));
-    }
-
-    @Test
-    public void disappearingItemIsNegatedInFull() {
-        store.updateItems(batch(ItemSource.Bank, items(1, 10, 2, 7)));
-
-        final var delta = store.updateItems(batch(ItemSource.Bank, items(1, 10)));
-
-        assertEquals(items(2, -7), delta.get(ItemSource.Bank));
-    }
-
-    @Test
-    public void unchangedItemsAreAbsentFromTheDelta() {
-        store.updateItems(batch(ItemSource.Bank, items(1, 10, 2, 7)));
-
-        final var delta = store.updateItems(batch(ItemSource.Bank, items(1, 10, 2, 9)));
-
-        assertEquals(items(2, 2), delta.get(ItemSource.Bank));
-    }
-
-    @Test
-    public void onlyMovedSourcesAppearInTheDelta() {
+    public void anUnchangedSourceDoesNotHideAMovedOne() {
         final Map<ItemSource, ItemQuantities> first = new EnumMap<>(ItemSource.class);
         first.put(ItemSource.Bank, items(1, 10));
         first.put(ItemSource.PotionStorage, items(2, 5));
@@ -94,10 +52,8 @@ public class HerbloreStoreTest {
         second.put(ItemSource.Bank, items(1, 10)); // unchanged
         second.put(ItemSource.PotionStorage, items(2, 8));
 
-        final var delta = store.updateItems(second);
-
-        assertEquals(Collections.singleton(ItemSource.PotionStorage), delta.keySet());
-        assertEquals(items(2, 3), delta.get(ItemSource.PotionStorage));
+        assertTrue(store.updateItems(second));
+        assertEquals(items(2, 8), store.itemsBySource().get(ItemSource.PotionStorage));
     }
 
     @Test

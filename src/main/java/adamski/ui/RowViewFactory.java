@@ -5,10 +5,11 @@ import adamski.domain.result.ChainRecipeXp;
 import adamski.domain.result.ChainResult;
 import adamski.domain.ItemQuantities;
 import adamski.domain.Recipe;
-import adamski.domain.yield.SecondaryBalance;
+import adamski.domain.balance.SecondaryBalance;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.IntFunction;
@@ -24,6 +25,8 @@ import java.util.stream.Collectors;
  */
 final class RowViewFactory {
     static final String MAKE_NOTHING = "Make nothing";
+    static final String NEEDED = "Needed";
+    static final String HELD = "Held";
 
     /**
      * Everything is counted in single doses, so every potion is named as its 1-dose item. The suffix
@@ -121,11 +124,38 @@ final class RowViewFactory {
     /**
      * The panel-wide balance: shortfalls first, as negatives, then what is spare.
      */
-    List<RowView.Line> secondaryLinesOf(SecondaryBalance balance) {
-        return balance.getNet().asMap().entrySet().stream()
-                .sorted(Map.Entry.comparingByValue())
-                .map(entry -> new RowView.Line(entry.getValue(), nameOf.apply(entry.getKey())))
+    List<SecondaryView> secondariesOf(SecondaryBalance balance) {
+        return balance.getEntries().stream()
+                .sorted(Comparator.comparingDouble(SecondaryBalance.BalanceEntry::net))
+                .map(this::secondaryOf)
                 .collect(Collectors.toList());
+    }
+
+    private SecondaryView secondaryOf(SecondaryBalance.BalanceEntry secondary) {
+        final List<RowView.Line> breakdown = new ArrayList<>();
+        breakdown.add(new RowView.Line(secondary.getQtyDemanded(), NEEDED));
+        breakdown.add(new RowView.Line(secondary.getQtyHeld(), HELD));
+
+        // a row is titled with its root item's name, so the line reads as the row
+        secondary.getChainContributions().stream()
+                .sorted(Comparator.comparingDouble(SecondaryBalance.ChainContribution::getMakes).reversed())
+                .forEach(chain -> breakdown.add(new RowView.Line(chain.getMakes(), nameOf.apply(chain.getRootItemId()))));
+
+        // every kind of bird nest is called "Bird nest", so precursors are summed by name
+        final Map<String, double[]> heldAndMadeByName = new LinkedHashMap<>();
+        for (SecondaryBalance.PrecursorContribution precursor : secondary.getPrecursorContributions()) {
+            final double[] heldAndMade = heldAndMadeByName.computeIfAbsent(nameOf.apply(precursor.getPrecursorItemId()), name -> new double[2]);
+            heldAndMade[0] += precursor.getHeld();
+            heldAndMade[1] += precursor.getMakes();
+        }
+
+        heldAndMadeByName.entrySet().stream()
+                .sorted(Comparator.comparingDouble((Map.Entry<String, double[]> entry) -> entry.getValue()[1]).reversed())
+                .forEach(entry -> breakdown.add(new RowView.Line(entry.getValue()[1],
+                        Amounts.abbreviate(entry.getValue()[0]) + " × " + entry.getKey())));
+
+        final int secondaryItemId = secondary.getSecondaryItemId();
+        return new SecondaryView(secondaryItemId, nameOf.apply(secondaryItemId), secondary.net(), breakdown);
     }
 
     /**

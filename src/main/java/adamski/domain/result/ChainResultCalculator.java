@@ -1,11 +1,9 @@
 package adamski.domain.result;
 
+import adamski.domain.Ingredient;
 import adamski.domain.ItemQuantities;
 import adamski.domain.Recipe;
 import adamski.domain.route.RecipeChain;
-import adamski.domain.yield.RecipeRun;
-import adamski.domain.yield.RecipeYieldCalculator;
-import adamski.domain.yield.SecondaryBalanceCalculator;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -38,7 +36,7 @@ public final class ChainResultCalculator {
 
             for (Integer itemId : ownedItemsInChain) {
                 final double quantity = owned.get(itemId);
-                final List<RecipeRun> runs = RecipeYieldCalculator.cascade(itemId, quantity, chain.getRecipes());
+                final List<RecipeRun> runs = cascade(itemId, quantity, chain);
 
                 // A banked product makes nothing further, so it is left out. A root that makes
                 // nothing has been told to stop, and is kept so its chain still has a row.
@@ -71,11 +69,51 @@ public final class ChainResultCalculator {
                     itemContributions,
                     recipeContributions,
                     sumOutputQuantity(allRuns, chain.getProductItemId()),
-                    SecondaryBalanceCalculator.sumDemand(allRuns),
+                    sumSecondaryDemand(allRuns),
                     totalXp));
         }
 
         return results;
+    }
+
+    /**
+     * Returns how many times each recipe runs when one banked item is fed along the chain from
+     * where it sits, each output feeding the next.
+     */
+    static List<RecipeRun> cascade(int itemId, double quantity, RecipeChain chain) {
+        final List<RecipeRun> runs = new ArrayList<>();
+
+        if (quantity == 0) return runs;
+
+        int currentItem = itemId;
+        double held = quantity;
+
+        for (Recipe recipe : chain.getRecipes()) {
+            if (recipe.getPrimary().getItemId() != currentItem) continue;
+
+            final RecipeRun run = new RecipeRun(recipe, held / recipe.getPrimary().getQuantity());
+            runs.add(run);
+
+            currentItem = recipe.getOutput().getItemId();
+            held = run.getOutputQuantity();
+        }
+
+        return runs;
+    }
+
+    /**
+     * @return how much of each secondary the given runs consume
+     */
+    static ItemQuantities sumSecondaryDemand(List<RecipeRun> runs) {
+        final Map<Integer, Double> demanded = new HashMap<>();
+
+        for (RecipeRun run : runs) {
+            for (Ingredient secondary : run.getRecipe().getSecondaries()) {
+                demanded.merge(secondary.getItemId(), run.getRuns() * secondary.getQuantity(), Double::sum);
+            }
+        }
+
+        return ItemQuantities.of(demanded);
     }
 
     private static List<Integer> findOwnedItemsInChain(RecipeChain chain, ItemQuantities owned) {

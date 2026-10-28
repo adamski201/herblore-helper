@@ -1,6 +1,5 @@
 package adamski.domain.result;
 
-import adamski.domain.yield.RecipeRun;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;

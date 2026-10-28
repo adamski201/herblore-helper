@@ -1,6 +1,7 @@
 package adamski.app;
 
 import adamski.data.Recipes;
+import adamski.data.SecondaryPrecursors;
 import adamski.domain.ItemQuantities;
 import adamski.domain.route.RecipeGraph;
 import adamski.domain.ItemSource;
@@ -8,7 +9,8 @@ import adamski.domain.route.RecipeSelection;
 import adamski.domain.result.ChainResult;
 import adamski.domain.result.ChainItemXp;
 import adamski.domain.result.ChainRecipeXp;
-import adamski.domain.yield.SecondaryBalance;
+import adamski.domain.balance.SecondaryBalance;
+import adamski.domain.balance.SecondaryBalance.ChainContribution;
 import net.runelite.api.gameval.ItemID;
 import org.junit.Before;
 import org.junit.Test;
@@ -45,7 +47,7 @@ public class HerbloreAppTest {
 
     @Before
     public void setUp() {
-        app = new HerbloreApp(new HerbloreStore(), GRAPH);
+        app = new HerbloreApp(new HerbloreStore(), GRAPH, SecondaryPrecursors.all());
     }
 
     @Test
@@ -503,6 +505,139 @@ public class HerbloreAppTest {
         assertEquals(ItemID._1DOSEFISHERSPOTION, app.getResult().getChainResults().get(0).getProductItemId());
     }
 
+    @Test
+    public void birdNestsCountTowardsCrushedNests() {
+        final Map<Integer, Integer> bank = items(ItemID.TOADFLAXVIAL, 10);
+        bank.put(ItemID.CRUSHED_BIRD_NEST, 3);
+        bank.put(ItemID.BIRD_NEST_EMPTY, 2);
+        bank.put(ItemID.BIRD_NEST_SEEDS_JAN2019, 2);
+
+        assertEquals(-3.0, brewBalance(bank).getNet().get(ItemID.CRUSHED_BIRD_NEST), DELTA);
+    }
+
+    @Test
+    public void bankedPrecursorsRootNoRow() {
+        final HerbloreResult result = bank(items(ItemID.BIRD_NEST_EMPTY, 50));
+
+        assertTrue(result.getChainResults().isEmpty());
+        assertEquals(0, result.getTotalXp(), DELTA);
+    }
+
+    @Test
+    public void notCountingPrecursorsRepublishesWithoutThem() {
+        final Map<Integer, Integer> bank = items(ItemID.TOADFLAXVIAL, 10);
+        bank.put(ItemID.BIRD_NEST_EMPTY, 4);
+        final double xp = brew(bank).getTotalXp();
+        final List<HerbloreResult> published = listenForResults();
+
+        app.applySettings(HerbloreSettings.DEFAULT.withPrecursorsCounted(false));
+
+        assertEquals(1, published.size());
+        assertEquals(-10.0, published.get(0).getSecondaryBalance().getNet().get(ItemID.CRUSHED_BIRD_NEST), DELTA);
+        assertEquals(xp, published.get(0).getTotalXp(), DELTA); // only the balance moves
+    }
+
+    @Test
+    public void countingPrecursorsAgainChangesNothingUntilItIsOff() {
+        brew(items(ItemID.TOADFLAXVIAL, 10));
+        final List<HerbloreResult> published = listenForResults();
+
+        app.applySettings(HerbloreSettings.DEFAULT.withPrecursorsCounted(true)); // already on
+
+        assertTrue(published.isEmpty());
+    }
+
+    @Test
+    public void notCountingPrecursorsBeforeAnySourceIsReadPublishesNothing() {
+        final List<HerbloreResult> published = listenForResults();
+
+        app.applySettings(HerbloreSettings.DEFAULT.withPrecursorsCounted(false));
+        assertTrue(published.isEmpty());
+
+        final Map<Integer, Integer> bank = items(ItemID.TOADFLAXVIAL, 10);
+        bank.put(ItemID.BIRD_NEST_EMPTY, 4);
+        assertEquals(-10.0, brewBalance(bank).getNet().get(ItemID.CRUSHED_BIRD_NEST), DELTA);
+    }
+
+    @Test
+    public void superAttacksFromIritCountTowardsSuperCombats() {
+        // 10 torstol to super combat need 40 doses of super attack; 10 irit vials make 30
+        final SecondaryBalance.BalanceEntry entry = superAttackEntryOf(superCombats());
+
+        assertEquals(40.0, entry.getQtyDemanded(), DELTA);
+        assertEquals(List.of(new ChainContribution(ItemID.IRITVIAL, 30.0)), entry.getChainContributions());
+        assertEquals(-10.0, entry.net(), DELTA);
+    }
+
+    @Test
+    public void bankedSuperAttacksAreHeldNotMade() {
+        final Map<Integer, Integer> bank = superCombats();
+        bank.put(ItemID._1DOSE2ATTACK, 4);
+
+        final SecondaryBalance.BalanceEntry entry = superAttackEntryOf(bank);
+
+        assertEquals(4.0, entry.getQtyHeld(), DELTA);
+        assertEquals(30.0, entry.totalFromChains(), DELTA);
+        assertEquals(-6.0, entry.net(), DELTA);
+    }
+
+    @Test
+    public void aRowSetToMakeNothingMakesNoSecondary() {
+        app.selectProduct(ItemID.IRITVIAL, ItemID.IRITVIAL);
+
+        final SecondaryBalance.BalanceEntry entry = superAttackEntryOf(superCombats());
+
+        assertTrue(entry.getChainContributions().isEmpty());
+        assertEquals(-40.0, entry.net(), DELTA);
+    }
+
+    @Test
+    public void notCountingChainProductsRepublishesWithoutThem() {
+        superAttackEntryOf(superCombats());
+        final List<HerbloreResult> published = listenForResults();
+
+        app.applySettings(HerbloreSettings.DEFAULT.withChainProductsCounted(false));
+
+        assertEquals(1, published.size());
+        assertEquals(-40.0, published.get(0).getSecondaryBalance().getNet().get(ItemID._1DOSE2ATTACK), DELTA);
+    }
+
+    /**
+     * 10 torstol sent straight to super combat, and 10 irit vials on their default, super attack.
+     */
+    private Map<Integer, Integer> superCombats() {
+        app.selectProduct(ItemID.TORSTOL, ItemID._1DOSE2COMBAT);
+
+        final Map<Integer, Integer> bank = items(ItemID.TORSTOL, 10);
+        bank.put(ItemID.IRITVIAL, 10);
+        return bank;
+    }
+
+    private SecondaryBalance.BalanceEntry superAttackEntryOf(Map<Integer, Integer> bankItems) {
+        return bankBalance(bankItems).getEntries().stream()
+                .filter(entry -> entry.getSecondaryItemId() == ItemID._1DOSE2ATTACK)
+                .findFirst()
+                .orElseThrow();
+    }
+
+    /**
+     * Banks the items with toadflax vials going to saradomin brews - each needs a crushed nest.
+     */
+    private HerbloreResult brew(Map<Integer, Integer> bankItems) {
+        app.selectProduct(ItemID.TOADFLAXVIAL, ItemID._1DOSEPOTIONOFSARADOMIN);
+        return bank(bankItems);
+    }
+
+    private SecondaryBalance brewBalance(Map<Integer, Integer> bankItems) {
+        return brew(bankItems).getSecondaryBalance();
+    }
+
+    private List<HerbloreResult> listenForResults() {
+        final List<HerbloreResult> published = new ArrayList<>();
+        app.addResultListener(published::add);
+        return published;
+    }
+
     private List<RecipeSelection> listenForSelections() {
         final List<RecipeSelection> told = new ArrayList<>();
         app.addSelectionListener(told::add);
@@ -513,7 +648,7 @@ public class HerbloreAppTest {
      * What a pick of hunting potions on grimy avantoe leaves behind, as a save would hold it.
      */
     private static RecipeSelection pickedAvantoeHunting() {
-        final HerbloreApp picker = new HerbloreApp(new HerbloreStore(), GRAPH);
+        final HerbloreApp picker = new HerbloreApp(new HerbloreStore(), GRAPH, SecondaryPrecursors.all());
         final List<RecipeSelection> told = new ArrayList<>();
         picker.addSelectionListener(told::add);
         picker.selectProduct(ItemID.UNIDENTIFIED_AVANTOE, ItemID._1DOSEHUNTING);
