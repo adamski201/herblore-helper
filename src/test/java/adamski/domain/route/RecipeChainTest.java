@@ -2,6 +2,7 @@ package adamski.domain.route;
 
 import adamski.domain.Ingredient;
 import adamski.domain.Recipe;
+import adamski.domain.RecipeTag;
 
 import org.junit.Test;
 
@@ -52,6 +53,6 @@ public class RecipeChainTest {
 
     private static Recipe recipe(int id, int primary, int output) {
         return new Recipe(id, new Ingredient(primary, 1), new Ingredient[0],
-                new Ingredient(output, 1), "test", 1f, 0);
+                new Ingredient(output, 1), RecipeTag.MISC, 1f, 0);
     }
 }

@@ -6,6 +6,7 @@ import adamski.domain.result.ChainResult;
 import adamski.domain.Ingredient;
 import adamski.domain.ItemQuantities;
 import adamski.domain.Recipe;
+import adamski.domain.RecipeTag;
 import adamski.domain.balance.SecondaryBalance;
 import adamski.domain.balance.SecondaryBalance.ChainContribution;
 import adamski.domain.balance.SecondaryBalance.PrecursorContribution;
@@ -40,9 +41,9 @@ public class RowViewFactoryTest {
             NEST, "Bird nest", SEED_NEST, "Bird nest", SCALE, "Lava scale");
 
     private static final Recipe CLEANING = new Recipe(10, new Ingredient(HERB, 1), new Ingredient[0],
-            new Ingredient(CLEAN, 1), "test", 2.5f, 1);
+            new Ingredient(CLEAN, 1), RecipeTag.MISC, 2.5f, 1);
     private static final Recipe MIXING = new Recipe(11, new Ingredient(CLEAN, 1),
-            new Ingredient[]{new Ingredient(SECONDARY, 1)}, new Ingredient(POTION, 1), "test", 25f, 1);
+            new Ingredient[]{new Ingredient(SECONDARY, 1)}, new Ingredient(POTION, 1), RecipeTag.MISC, 25f, 1);
 
     private final RowViewFactory factory = new RowViewFactory(NAMES::get, Map.of(HERB, List.of(CLEANING, MIXING)));
 
@@ -53,12 +54,12 @@ public class RowViewFactoryTest {
     @Test
     public void optionsAreGroupedByStepThenTheRestByLevel() {
         final List<Recipe> shuffled = List.of(
-                recipeMaking(10, "potion", 60),
-                recipeMaking(11, "unf", 50),
-                recipeMaking(12, "caviar", 70),
-                recipeMaking(13, "degrime", 48),
-                recipeMaking(14, "seed", 90),
-                recipeMaking(15, "potion", 40));
+                recipeMaking(10, RecipeTag.POTION, 60),
+                recipeMaking(11, RecipeTag.UNF, 50),
+                recipeMaking(12, RecipeTag.CAVIAR, 70),
+                recipeMaking(13, RecipeTag.DEGRIME, 48),
+                recipeMaking(14, RecipeTag.SEED, 90),
+                recipeMaking(15, RecipeTag.POTION, 40));
 
         final RowViewFactory factory = new RowViewFactory(itemId -> "item " + itemId, Map.of(HERB, shuffled));
         final RowView row = factory.rowOf(new ChainResult(HERB, POTION,
@@ -206,7 +207,7 @@ public class RowViewFactoryTest {
      * A recipe making the given item, tagged and levelled as the menu sorts by. What it takes is
      * irrelevant here.
      */
-    private static Recipe recipeMaking(int productItemId, String tag, int level) {
+    private static Recipe recipeMaking(int productItemId, RecipeTag tag, int level) {
         return new Recipe(productItemId, new Ingredient(HERB, 1), new Ingredient[0],
                 new Ingredient(productItemId, 1), tag, 0f, level);
     }

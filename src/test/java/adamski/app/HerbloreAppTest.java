@@ -113,9 +113,28 @@ public class HerbloreAppTest {
     }
 
     @Test
-    public void seedsCountAtTheNominalYield() {
-        // r122 yields NOMINAL_HERB_YIELD grimy ranarr and is itself worth no xp
-        assertEquals(8 * GRIMY_RANARR_XP, bank(items(ItemID.RANARR_SEED, 1)).getTotalXp(), DELTA);
+    public void seedsCountAtTheDefaultYield() {
+        // r122 yields DEFAULT_HERB_YIELD grimy ranarr and is itself worth no xp
+        assertEquals(Recipes.DEFAULT_HERB_YIELD * GRIMY_RANARR_XP, bank(items(ItemID.RANARR_SEED, 1)).getTotalXp(), DELTA);
+    }
+
+    @Test
+    public void aSeedYieldSettingReplacesTheDefault() {
+        bank(items(ItemID.RANARR_SEED, 2));
+
+        app.applySettings(HerbloreSettings.DEFAULT.withSeedYieldBySeedItemId(Map.of(ItemID.RANARR_SEED, 10.0)));
+
+        assertEquals(2 * 10.0 * GRIMY_RANARR_XP, app.getResult().getTotalXp(), DELTA);
+    }
+
+    @Test
+    public void aSeedYieldOnlyChangesItsOwnHerb() {
+        bank(items(ItemID.AVANTOE_SEED, 1));
+        final double before = app.getResult().getTotalXp();
+
+        app.applySettings(HerbloreSettings.DEFAULT.withSeedYieldBySeedItemId(Map.of(ItemID.RANARR_SEED, 10.0)));
+
+        assertEquals(before, app.getResult().getTotalXp(), DELTA);
     }
 
     @Test
@@ -241,7 +260,7 @@ public class HerbloreAppTest {
     public void seedVaultCounts() {
         app.updateItems(source(ItemSource.SeedVault, items(ItemID.RANARR_SEED, 1)));
 
-        assertEquals(8 * GRIMY_RANARR_XP, app.getResult().getTotalXp(), DELTA);
+        assertEquals(Recipes.DEFAULT_HERB_YIELD * GRIMY_RANARR_XP, app.getResult().getTotalXp(), DELTA);
     }
 
     @Test

@@ -5,6 +5,7 @@ import adamski.domain.result.ChainRecipeXp;
 import adamski.domain.result.ChainResult;
 import adamski.domain.ItemQuantities;
 import adamski.domain.Recipe;
+import adamski.domain.RecipeTag;
 import adamski.domain.balance.SecondaryBalance;
 
 import java.util.ArrayList;
@@ -37,7 +38,7 @@ final class RowViewFactory {
     /**
      * Recipe tags for the steps on the way to a potion, in the order they happen.
      */
-    private static final List<String> STEP_ORDER = List.of("seed", "degrime", "unf");
+    private static final List<RecipeTag> STEP_ORDER = List.of(RecipeTag.SEED, RecipeTag.DEGRIME, RecipeTag.UNF);
 
     private final IntFunction<String> nameOf;
 

@@ -4,6 +4,7 @@ import adamski.data.Recipes;
 import adamski.domain.Ingredient;
 import adamski.domain.ItemQuantities;
 import adamski.domain.Recipe;
+import adamski.domain.RecipeTag;
 import adamski.domain.route.RecipeChain;
 import adamski.domain.route.RecipeChainResolver;
 import adamski.domain.route.RecipeGraph;
@@ -136,7 +137,7 @@ public class ChainResultCalculatorTest {
     @Test
     public void aStepWorthNoXpIsLeftOut() {
         final Recipe freeStep = new Recipe(11, new Ingredient(2, 1), new Ingredient[0],
-                new Ingredient(3, 1), "test", 0f, 0);
+                new Ingredient(3, 1), RecipeTag.MISC, 0f, 0);
 
         final RecipeChain chain = new RecipeChain(Arrays.asList(freeStep, THREE_TO_FOUR));
 
@@ -150,7 +151,7 @@ public class ChainResultCalculatorTest {
     @Test
     public void outputQuantityCountsOnlyTheProduct() {
         final Recipe threeToFourTriples = new Recipe(12, new Ingredient(3, 1), new Ingredient[0],
-                new Ingredient(4, 3), "test", 1f, 0);
+                new Ingredient(4, 3), RecipeTag.MISC, 1f, 0);
 
         final RecipeChain chain = new RecipeChain(Collections.singletonList(threeToFourTriples));
 
@@ -162,7 +163,7 @@ public class ChainResultCalculatorTest {
     @Test
     public void secondaryDemandCoversOnlyTheGroupsOwnRuns() {
         final Recipe needsTwoOfItem50 = new Recipe(12, new Ingredient(3, 1),
-                new Ingredient[]{new Ingredient(50, 2)}, new Ingredient(4, 1), "test", 1f, 0);
+                new Ingredient[]{new Ingredient(50, 2)}, new Ingredient(4, 1), RecipeTag.MISC, 1f, 0);
 
         final RecipeChain chain = new RecipeChain(Collections.singletonList(needsTwoOfItem50));
 
@@ -300,7 +301,7 @@ public class ChainResultCalculatorTest {
     public void aFractionalOutputScalesEverythingAfterIt() {
         // item 1 -> 2 succeeds half the time, so 4 of item 1 make 2 of item 2
         final Recipe halfOneToTwo = new Recipe(10, new Ingredient(1, 1), new Ingredient[0],
-                new Ingredient(2, 0.5), "test", 0f, 0);
+                new Ingredient(2, 0.5), RecipeTag.MISC, 0f, 0);
         final List<RecipeRun> runs = cascade(1, 4, halfOneToTwo, C_TWO_TO_THREE);
 
         assertRun(runs.get(0), halfOneToTwo, 4);
@@ -369,12 +370,12 @@ public class ChainResultCalculatorTest {
 
     private static Recipe recipe(int id, int primaryId, int primaryQty, int outputId, int outputQty) {
         return new Recipe(id, new Ingredient(primaryId, primaryQty), new Ingredient[0],
-                new Ingredient(outputId, outputQty), "test", 0f, 0);
+                new Ingredient(outputId, outputQty), RecipeTag.MISC, 0f, 0);
     }
 
     private static Recipe needing(int id, int primaryId, Ingredient... secondaries) {
         return new Recipe(id, new Ingredient(primaryId, 1), secondaries,
-                new Ingredient(primaryId + 100, 1), "test", 0f, 0);
+                new Ingredient(primaryId + 100, 1), RecipeTag.MISC, 0f, 0);
     }
 
     private static List<ChainResult> calculate(ItemQuantities owned) {
@@ -391,6 +392,6 @@ public class ChainResultCalculatorTest {
 
     private static Recipe recipe(int id, int primary, int output) {
         return new Recipe(id, new Ingredient(primary, 1), new Ingredient[0],
-                new Ingredient(output, 1), "test", 1f, 0);
+                new Ingredient(output, 1), RecipeTag.MISC, 1f, 0);
     }
 }

@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -137,10 +138,7 @@ public class HerbloreApp {
         final var routedChains = chainResolver.resolve(ownedItems, store.selection());
 
         // Override recipe yields with those configured by player's settings
-        final var recipeYieldOverrides = Map.of(
-                Recipes.CUT_LEAPING_STURGEON_RECIPE_ID, settings.getCaviarSuccessRate()
-        );
-        final var recipeChains = YieldOverrides.apply(routedChains, recipeYieldOverrides);
+        final var recipeChains = YieldOverrides.apply(routedChains, getRecipeYieldOverrides(settings));
 
         // Calculate the XP & quantity result for each chain
         final var chainResults = ChainResultCalculator.calculate(recipeChains, ownedItems);
@@ -153,6 +151,15 @@ public class HerbloreApp {
                 settings.isPrecursorsCounted() ? precursors : List.of());
 
         return new HerbloreResult(ownedItems, chainResults, secondaryBalance);
+    }
+
+    private static Map<Integer, Double> getRecipeYieldOverrides(HerbloreSettings settings) {
+        final Map<Integer, Double> overrides = new HashMap<>();
+        overrides.put(Recipes.CUT_LEAPING_STURGEON_RECIPE_ID, settings.getCaviarSuccessRate());
+        settings.getSeedYieldBySeedItemId().forEach((seedItemId, yield) ->
+                overrides.put(Recipes.seedRecipeIdOf(seedItemId), yield));
+
+        return overrides;
     }
 
     private static ItemQuantities mergeSources(Map<ItemSource, ItemQuantities> snapshot) {

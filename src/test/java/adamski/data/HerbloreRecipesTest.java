@@ -18,6 +18,21 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class HerbloreRecipesTest {
+    /**
+     * Each seed's and frag's yield setting is turned into an override on its recipe, and one no
+     * recipe grows would throw on every calculation.
+     */
+    @Test
+    public void everySeedWithAYieldSettingIsGrownByARecipe() {
+        for (int seed : List.of(ItemID.GUAM_SEED, ItemID.MARRENTILL_SEED, ItemID.TARROMIN_SEED,
+                ItemID.HARRALANDER_SEED, ItemID.RANARR_SEED, ItemID.TOADFLAX_SEED, ItemID.IRIT_SEED,
+                ItemID.AVANTOE_SEED, ItemID.KWUARM_SEED, ItemID.HUASCA_SEED, ItemID.SNAPDRAGON_SEED,
+                ItemID.CADANTINE_SEED, ItemID.LANTADYME_SEED, ItemID.DWARF_WEED_SEED, ItemID.TORSTOL_SEED,
+                ItemID.CORAL_ELKHORN_FRAG, ItemID.CORAL_PILLAR_FRAG, ItemID.CORAL_UMBRAL_FRAG)) {
+            Recipes.seedRecipeIdOf(seed);
+        }
+    }
+
     @Test
     public void relevantItemsCoversEveryRole() {
         // primary, output and secondary respectively

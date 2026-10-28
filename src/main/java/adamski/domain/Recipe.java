@@ -16,12 +16,12 @@ public final class Recipe {
     private final Ingredient primary;
     private final List<Ingredient> secondaries;
     private final Ingredient output;
-    private final String tag;
+    private final RecipeTag tag;
     private final float xp;
     private final int level;
 
     public Recipe(int id, Ingredient primary, Ingredient[] secondaries, Ingredient output,
-                  String tag, float xp, int level) {
+                  RecipeTag tag, float xp, int level) {
         this.id = id;
         this.primary = primary;
         this.secondaries = Collections.unmodifiableList(Arrays.asList(secondaries.clone()));

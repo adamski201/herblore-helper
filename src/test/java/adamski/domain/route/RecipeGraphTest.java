@@ -3,6 +3,7 @@ package adamski.domain.route;
 import adamski.data.Recipes;
 import adamski.domain.Ingredient;
 import adamski.domain.Recipe;
+import adamski.domain.RecipeTag;
 
 import net.runelite.api.gameval.ItemID;
 import org.junit.Test;
@@ -257,7 +258,7 @@ public class RecipeGraphTest {
     @Test(expected = IllegalStateException.class)
     public void aCircularTableIsRejected() {
         new RecipeGraph(List.of(
-                new Recipe(1, new Ingredient(1, 1), new Ingredient[0], new Ingredient(2, 1), "test", 1f, 0),
-                new Recipe(2, new Ingredient(2, 1), new Ingredient[0], new Ingredient(1, 1), "test", 1f, 0)));
+                new Recipe(1, new Ingredient(1, 1), new Ingredient[0], new Ingredient(2, 1), RecipeTag.MISC, 1f, 0),
+                new Recipe(2, new Ingredient(2, 1), new Ingredient[0], new Ingredient(1, 1), RecipeTag.MISC, 1f, 0)));
     }
 }

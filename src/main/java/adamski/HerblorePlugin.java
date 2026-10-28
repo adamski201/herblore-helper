@@ -11,6 +11,7 @@ import adamski.infrastructure.SelectionPersistence;
 import adamski.ui.HerblorePanel;
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
@@ -27,6 +28,9 @@ import javax.inject.Singleton;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
+import static java.util.Map.entry;
 
 @Slf4j
 @PluginDescriptor(name = "Herblore Helper")
@@ -101,9 +105,32 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
         final HerbloreSettings settings = new HerbloreSettings(
                 config.countSecondariesMadeByRows(),
                 config.countSecondaryPrecursors(),
-                config.caviarSuccessRate() / 100.0);
+                config.caviarSuccessRate() / 100.0,
+                seedYields());
 
         clientThread.invoke(() -> app.applySettings(settings));
+    }
+
+    private Map<Integer, Double> seedYields() {
+        return Map.ofEntries(
+                entry(ItemID.GUAM_SEED, config.guamSeedYield()),
+                entry(ItemID.MARRENTILL_SEED, config.marrentillSeedYield()),
+                entry(ItemID.TARROMIN_SEED, config.tarrominSeedYield()),
+                entry(ItemID.HARRALANDER_SEED, config.harralanderSeedYield()),
+                entry(ItemID.RANARR_SEED, config.ranarrSeedYield()),
+                entry(ItemID.TOADFLAX_SEED, config.toadflaxSeedYield()),
+                entry(ItemID.IRIT_SEED, config.iritSeedYield()),
+                entry(ItemID.AVANTOE_SEED, config.avantoeSeedYield()),
+                entry(ItemID.KWUARM_SEED, config.kwuarmSeedYield()),
+                entry(ItemID.HUASCA_SEED, config.huascaSeedYield()),
+                entry(ItemID.SNAPDRAGON_SEED, config.snapdragonSeedYield()),
+                entry(ItemID.CADANTINE_SEED, config.cadantineSeedYield()),
+                entry(ItemID.LANTADYME_SEED, config.lantadymeSeedYield()),
+                entry(ItemID.DWARF_WEED_SEED, config.dwarfWeedSeedYield()),
+                entry(ItemID.TORSTOL_SEED, config.torstolSeedYield()),
+                entry(ItemID.CORAL_ELKHORN_FRAG, config.elkhornCoralYield()),
+                entry(ItemID.CORAL_PILLAR_FRAG, config.pillarCoralYield()),
+                entry(ItemID.CORAL_UMBRAL_FRAG, config.umbralCoralYield()));
     }
 
     @Provides
