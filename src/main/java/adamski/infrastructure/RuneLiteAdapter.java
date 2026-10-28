@@ -6,11 +6,15 @@ import adamski.data.PotionDoses;
 import adamski.data.SecondaryPrecursors;
 import adamski.domain.ItemQuantities;
 import adamski.domain.ItemSource;
+import net.runelite.api.Client;
+import net.runelite.api.GameState;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
+import net.runelite.api.Skill;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.ScriptPostFired;
+import net.runelite.api.events.StatChanged;
 import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.client.eventbus.Subscribe;
@@ -27,6 +31,7 @@ import java.util.Map;
  */
 @Singleton
 public class RuneLiteAdapter {
+    private final Client client;
     private final ItemManager itemManager;
     private final PotionStorageAdapter potionStorage;
     private final HerbloreApp app;
@@ -39,7 +44,9 @@ public class RuneLiteAdapter {
     );
 
     @Inject
-    public RuneLiteAdapter(ItemManager itemManager, PotionStorageAdapter potionStorage, HerbloreApp app) {
+    public RuneLiteAdapter(Client client, ItemManager itemManager, PotionStorageAdapter potionStorage,
+                           HerbloreApp app) {
+        this.client = client;
         this.itemManager = itemManager;
         this.potionStorage = potionStorage;
         this.app = app;
@@ -51,6 +58,19 @@ public class RuneLiteAdapter {
         if (itemSource == null) return;
 
         pending.put(itemSource, getItemQuantitiesFromContainer(event.getItemContainer()));
+    }
+
+    @Subscribe
+    public void onStatChanged(StatChanged event) {
+        if (event.getSkill() != Skill.HERBLORE) return;
+
+        app.updateCurrentXp(event.getXp());
+    }
+
+    public void readCurrentXp() {
+        if (client.getGameState() != GameState.LOGGED_IN) return;
+
+        app.updateCurrentXp(client.getSkillExperience(Skill.HERBLORE));
     }
 
     @Subscribe

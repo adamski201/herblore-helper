@@ -4,19 +4,30 @@ import adamski.app.HerbloreApp;
 import adamski.app.ResultListener;
 import adamski.domain.Recipe;
 import adamski.app.HerbloreResult;
+import adamski.ui.icon.CogIcon;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.util.AsyncBufferedImage;
+import net.runelite.client.util.ImageUtil;
 
+import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
+import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
+import javax.swing.border.MatteBorder;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -25,12 +36,18 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class HerblorePanel extends PluginPanel implements ResultListener {
+    /**
+     * The title's icon, at most this wide and tall.
+     */
+    private static final int LOGO_SIZE = 20;
+
     private final ItemManager itemManager;
     private final ClientThread clientThread;
     private final HerbloreApp app;
     private final RowViewFactory rowViewFactory;
 
-    private final JLabel total = new JLabel("No data yet - open your bank");
+    private final JLabel noData = new JLabel("No data yet - open your bank");
+    private final XpBar xpBar = new XpBar();
     private final JPanel rows = new JPanel(new DynamicGridLayout(0, 1, 0, 3));
     private final JPanel secondaries = new JPanel(new DynamicGridLayout(0, 1, 0, 1));
 
@@ -86,9 +103,12 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
     /**
      * @param productRecipesByItem for each item, the recipe making each product it could end at -
      *                             what a row's menu offers. Fixed by the table, so given once here.
+     * @param icon                 the plugin's icon, for the title
+     * @param openSettings         opens this plugin's settings. Called on the EDT.
      */
     public HerblorePanel(ItemManager itemManager, ClientThread clientThread, HerbloreApp app,
-                         Map<Integer, List<Recipe>> productRecipesByItem) {
+                         Map<Integer, List<Recipe>> productRecipesByItem, BufferedImage icon,
+                         Runnable openSettings) {
         this.itemManager = itemManager;
         this.clientThread = clientThread;
         this.app = app;
@@ -96,9 +116,18 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
 
         setLayout(new BorderLayout());
 
-        total.setFont(FontManager.getRunescapeBoldFont());
-        total.setForeground(Color.WHITE);
-        total.setBorder(new EmptyBorder(0, 0, 8, 0));
+        noData.setFont(FontManager.getRunescapeFont());
+        noData.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        noData.setHorizontalAlignment(JLabel.CENTER);
+
+        // the bar takes the label's place once a result arrives
+        xpBar.setVisible(false);
+        final JPanel header = new JPanel(new BorderLayout());
+        header.setOpaque(false);
+        header.setBorder(new EmptyBorder(0, 0, 8, 0));
+        header.add(titleOf(icon, openSettings), BorderLayout.NORTH);
+        header.add(noData, BorderLayout.CENTER);
+        header.add(xpBar, BorderLayout.SOUTH);
 
         rows.setOpaque(false);
         secondaries.setOpaque(false);
@@ -106,17 +135,68 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
 
         final JPanel content = new JPanel(new BorderLayout());
         content.setOpaque(false);
-        content.add(total, BorderLayout.NORTH);
+        content.add(header, BorderLayout.NORTH);
         content.add(rows, BorderLayout.CENTER);
         content.add(secondaries, BorderLayout.SOUTH);
 
         add(content, BorderLayout.NORTH);
     }
 
+    /**
+     * The plugin's icon on the left, its name in the middle, and a cog on the right that opens the
+     * settings.
+     */
+    private static JPanel titleOf(BufferedImage icon, Runnable openSettings) {
+        final JLabel name = new JLabel("Herblore Helper", JLabel.CENTER);
+        name.setFont(FontManager.getRunescapeBoldFont());
+        name.setForeground(Color.WHITE);
+
+        // a little larger than the cog, which is mostly empty space, keeping the icon's shape
+        final JLabel logo = new JLabel(new ImageIcon(ImageUtil.resizeImage(icon, LOGO_SIZE, LOGO_SIZE, true)));
+
+        final JLabel settings = new JLabel(new CogIcon(ColorScheme.LIGHT_GRAY_COLOR));
+        settings.setToolTipText("Settings");
+        settings.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        settings.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                openSettings.run();
+            }
+
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                settings.setIcon(new CogIcon(Color.WHITE));
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                settings.setIcon(new CogIcon(ColorScheme.LIGHT_GRAY_COLOR));
+            }
+        });
+
+        // the icon and the cog take the same width, so the name centres on the panel
+        final Dimension corner = new Dimension(LOGO_SIZE, LOGO_SIZE);
+        logo.setPreferredSize(corner);
+        settings.setPreferredSize(corner);
+
+        // a thin line under the title sets it apart from what the panel shows below
+        final JPanel title = new JPanel(new BorderLayout());
+        title.setOpaque(false);
+        title.setBorder(new CompoundBorder(
+                new CompoundBorder(new EmptyBorder(0, 0, 8, 0),
+                        new MatteBorder(0, 0, 1, 0, ColorScheme.MEDIUM_GRAY_COLOR)),
+                new EmptyBorder(0, 0, 6, 0)));
+        title.add(logo, BorderLayout.WEST);
+        title.add(name, BorderLayout.CENTER);
+        title.add(settings, BorderLayout.EAST);
+        return title;
+    }
+
     @Override
     public void onResultChanged(HerbloreResult result) {
+        final XpBarView xpBarView = XpBarView.of(result.getCurrentXp(), result.getTotalXp());
+
         // Names resolve here - ItemManager cannot be touched from the EDT
-        final String totalText = String.format("Banked XP: %,.0f", result.getTotalXp());
 
         // Rows worth nothing stay listed - a row stopped at an unf vial still needs its picker.
         // Kept in the domain's order here; RowOrder decides where they sit.
@@ -128,7 +208,7 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
         final Integer pickedOnRootItemId = pickingOnRootItemId;
 
         SwingUtilities.invokeLater(() -> {
-            final Runnable render = () -> render(totalText, rowViews, pickedOnRootItemId, secondaryViews);
+            final Runnable render = () -> render(xpBarView, rowViews, pickedOnRootItemId, secondaryViews);
 
             if (active) {
                 render.run();
@@ -153,9 +233,11 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
         active = false;
     }
 
-    private void render(String totalText, List<RowView> rowViews, Integer pickedOnRootItemId,
+    private void render(XpBarView xpBarView, List<RowView> rowViews, Integer pickedOnRootItemId,
                         List<SecondaryView> secondaryViews) {
-        total.setText(totalText);
+        noData.setVisible(false);
+        xpBar.setVisible(true);
+        xpBar.setView(xpBarView);
 
         final Map<Integer, RowView> rowByRootItemId = new HashMap<>();
         for (RowView row : rowViews) {

@@ -14,6 +14,7 @@ public class HerbloreStore {
     private final Map<ItemSource, ItemQuantities> itemsBySource = new EnumMap<>(ItemSource.class);
     private RecipeSelection selection = RecipeSelection.ALL_DEFAULT;
     private HerbloreSettings settings = HerbloreSettings.DEFAULT;
+    private int currentXp;
 
     /**
      * @return true if any source differs from what is already held
@@ -70,5 +71,23 @@ public class HerbloreStore {
      */
     public HerbloreSettings settings() {
         return settings;
+    }
+
+    /**
+     * @return true if it differs from what is already held
+     */
+    public boolean updateCurrentXp(int next) {
+        if (next == currentXp) return false;
+
+        currentXp = next;
+
+        return true;
+    }
+
+    /**
+     * @return the player's Herblore xp, or 0 before it has been read
+     */
+    public int currentXp() {
+        return currentXp;
     }
 }

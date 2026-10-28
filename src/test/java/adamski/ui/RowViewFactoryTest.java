@@ -10,6 +10,7 @@ import adamski.domain.RecipeTag;
 import adamski.domain.balance.SecondaryBalance;
 import adamski.domain.balance.SecondaryBalance.ChainContribution;
 import adamski.domain.balance.SecondaryBalance.PrecursorContribution;
+import net.runelite.api.gameval.ItemID;
 import org.junit.Test;
 
 import java.util.List;
@@ -27,7 +28,8 @@ public class RowViewFactoryTest {
 
     private static final int HERB = 1;
     private static final int CLEAN = 2;
-    private static final int POTION = 3;
+    // a real potion, since only potions have their "(1)" taken off
+    private static final int POTION = ItemID._1DOSE1ATTACK;
     private static final int SECONDARY = 9;
     private static final int OTHER_SECONDARY = 8;
     // two kinds of nest, which the game names alike, and a scale - all precursors

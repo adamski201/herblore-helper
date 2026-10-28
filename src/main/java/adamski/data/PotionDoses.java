@@ -291,6 +291,13 @@ public final class PotionDoses {
         return v == null ? 1 : v[1];
     }
 
+    /**
+     * @return whether itemId is a potion or mix, counted in doses
+     */
+    public static boolean isPotion(int itemId) {
+        return VARIANTS.containsKey(itemId);
+    }
+
     public static Map<Integer, int[]> all() {
         return Collections.unmodifiableMap(VARIANTS);
     }

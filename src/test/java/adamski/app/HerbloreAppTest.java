@@ -28,6 +28,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -255,6 +256,36 @@ public class HerbloreAppTest {
         assertTrue(entries.contains(ItemID.BRUT_CAVIAR));
     }
 
+
+    @Test
+    public void theResultCarriesTheCurrentXp() {
+        app.updateCurrentXp(1_000);
+        bank(items(ItemID.RANARR_SEED, 1));
+
+        assertEquals(1_000, app.getResult().getCurrentXp());
+    }
+
+    @Test
+    public void anXpDropRepublishes() {
+        bank(items(ItemID.RANARR_SEED, 1));
+        final HerbloreResult before = app.getResult();
+
+        app.updateCurrentXp(2_000);
+
+        assertNotEquals(before, app.getResult());
+        assertEquals(2_000, app.getResult().getCurrentXp());
+    }
+
+    @Test
+    public void anUnchangedXpPublishesNothing() {
+        app.updateCurrentXp(2_000);
+        bank(items(ItemID.RANARR_SEED, 1));
+        final HerbloreResult before = app.getResult();
+
+        app.updateCurrentXp(2_000);
+
+        assertSame(before, app.getResult());
+    }
 
     @Test
     public void seedVaultCounts() {

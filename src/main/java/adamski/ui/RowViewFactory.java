@@ -3,6 +3,7 @@ package adamski.ui;
 import adamski.domain.result.ChainItemXp;
 import adamski.domain.result.ChainRecipeXp;
 import adamski.domain.result.ChainResult;
+import adamski.data.PotionDoses;
 import adamski.domain.ItemQuantities;
 import adamski.domain.Recipe;
 import adamski.domain.RecipeTag;
@@ -31,7 +32,7 @@ final class RowViewFactory {
 
     /**
      * Everything is counted in single doses, so every potion is named as its 1-dose item. The suffix
-     * says nothing the sprite beside it does not.
+     * says nothing the sprite beside it does not. Only taken off potions.
      */
     private static final Pattern ONE_DOSE_SUFFIX = Pattern.compile("\\s*\\(1\\)$");
 
@@ -49,7 +50,9 @@ final class RowViewFactory {
     private final Map<Integer, List<Recipe>> productRecipesByItem;
 
     RowViewFactory(IntFunction<String> nameOf, Map<Integer, List<Recipe>> productRecipesByItem) {
-        this.nameOf = itemId -> ONE_DOSE_SUFFIX.matcher(nameOf.apply(itemId)).replaceFirst("");
+        this.nameOf = itemId -> PotionDoses.isPotion(itemId)
+                ? ONE_DOSE_SUFFIX.matcher(nameOf.apply(itemId)).replaceFirst("")
+                : nameOf.apply(itemId);
         this.productRecipesByItem = productRecipesByItem;
     }
 

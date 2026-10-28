@@ -1,5 +1,6 @@
 package adamski.ui;
 
+import adamski.data.PotionDoses;
 import adamski.ui.icon.CaretIcon;
 import adamski.ui.icon.CornerArrowIcon;
 import adamski.ui.icon.NoEntryIcon;
@@ -119,7 +120,8 @@ class RowPanel extends JPanel {
         final JLabel rootIcon = new JLabel();
         rootIcon.setHorizontalAlignment(SwingConstants.CENTER);
         rootIcon.setPreferredSize(ROOT_ICON_CELL);
-        setStack(rootIcon, iconOf.apply(row.getRootItemId()), row.getRootQuantity());
+        setStack(rootIcon, iconOf.apply(row.getRootItemId()), row.getRootQuantity(),
+                PotionDoses.isPotion(row.getRootItemId()));
 
         final JLabel rootName = new JLabel(row.getRootItemName());
         rootName.setFont(FontManager.getRunescapeBoldFont());
@@ -143,7 +145,8 @@ class RowPanel extends JPanel {
 
         final JLabel productIcon = new JLabel();
         productIcon.setHorizontalAlignment(SwingConstants.RIGHT);
-        setStack(productIcon, iconOf.apply(row.getProductItemId()), row.getOutputQuantity());
+        setStack(productIcon, iconOf.apply(row.getProductItemId()), row.getOutputQuantity(),
+                PotionDoses.isPotion(row.getProductItemId()));
 
         // the caret says this opens something
         final JLabel caret = new JLabel(new CaretIcon(ColorScheme.LIGHT_GRAY_COLOR));
@@ -234,8 +237,8 @@ class RowPanel extends JPanel {
         return line;
     }
 
-    private static void setStack(JLabel label, AsyncBufferedImage sprite, double quantity) {
-        final StackIcon icon = new StackIcon(sprite, quantity);
+    private static void setStack(JLabel label, AsyncBufferedImage sprite, double quantity, boolean doses) {
+        final StackIcon icon = new StackIcon(sprite, quantity, doses);
         label.setIcon(icon);
         icon.repaintWhenLoaded(label);
     }

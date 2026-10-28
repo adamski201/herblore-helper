@@ -11,20 +11,26 @@ import adamski.infrastructure.SelectionPersistence;
 import adamski.ui.HerblorePanel;
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.MenuAction;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.events.OverlayMenuClicked;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
+import net.runelite.client.ui.overlay.Overlay;
+import net.runelite.client.ui.overlay.OverlayMenuEntry;
 import net.runelite.client.util.ImageUtil;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import java.awt.Dimension;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
@@ -61,9 +67,10 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
 
     @Override
     protected void startUp() throws Exception {
-        panel = new HerblorePanel(itemManager, clientThread, app, graph.findProductRecipesByItem());
-
         final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "icon.png");
+        panel = new HerblorePanel(itemManager, clientThread, app, graph.findProductRecipesByItem(), icon,
+                this::openSettings);
+
         navButton = NavigationButton.builder().tooltip("Herblore Helper").icon(icon).priority(100).panel(panel).build();
 
         clientToolbar.addNavigation(navButton);
@@ -72,6 +79,7 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
 
         // already logged in when the plugin is switched on, so no profile change is coming
         clientThread.invoke(selectionPersistence::load);
+        clientThread.invoke(adapter::readCurrentXp);
         applyConfig();
 
         // LAST!
@@ -99,6 +107,22 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
         if (!HerbloreConfig.GROUP.equals(event.getGroup())) return;
 
         applyConfig();
+    }
+
+    private void openSettings() {
+        eventBus.post(new OverlayMenuClicked(
+                new OverlayMenuEntry(MenuAction.RUNELITE_OVERLAY_CONFIG, null, null), new SettingsOverlay(this)));
+    }
+
+    private static final class SettingsOverlay extends Overlay {
+        SettingsOverlay(net.runelite.client.plugins.Plugin plugin) {
+            super(plugin);
+        }
+
+        @Override
+        public Dimension render(Graphics2D graphics) {
+            return null;
+        }
     }
 
     private void applyConfig() {

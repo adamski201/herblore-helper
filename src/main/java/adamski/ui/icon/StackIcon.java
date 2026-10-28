@@ -1,5 +1,6 @@
 package adamski.ui.icon;
 
+import adamski.ui.Amounts;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.AsyncBufferedImage;
 
@@ -9,8 +10,9 @@ import java.awt.Component;
 import java.awt.Graphics;
 
 /**
- * An item sprite with a quantity drawn over its top-left corner, as the game draws a stack: yellow
- * below 100K, white in thousands, green in millions.
+ * An item sprite with a quantity drawn over its top-left corner, in the game's stack colours - yellow
+ * below 100K, white in thousands, green in millions - but shortened like every other amount in the
+ * panel, so a 15,510 dose stack reads "16k".
  * <p>
  * ItemManager can draw the quantity itself, but it caches per item <em>and</em> quantity, and draws
  * synchronously when asked on the client thread - every change of quantity meant a fresh model
@@ -29,22 +31,23 @@ public final class StackIcon implements Icon {
 
     /**
      * @param quantity rounded to a whole number; nothing is drawn for less than one
+     * @param doses    whether the stack is a potion's doses, which keep a decimal up to 50k
      */
-    public StackIcon(AsyncBufferedImage sprite, double quantity) {
+    public StackIcon(AsyncBufferedImage sprite, double quantity, boolean doses) {
         this.sprite = sprite;
 
         final long whole = Math.round(quantity);
         if (whole < 1) {
             this.quantity = null;
-            this.color = null;
-        } else if (whole < 100_000) {
-            this.quantity = Long.toString(whole);
+        } else {
+            this.quantity = doses ? Amounts.abbreviateDoses(whole) : Amounts.abbreviate(whole);
+        }
+
+        if (whole < 100_000) {
             this.color = YELLOW;
         } else if (whole < 10_000_000) {
-            this.quantity = whole / 1_000 + "K";
             this.color = Color.WHITE;
         } else {
-            this.quantity = whole / 1_000_000 + "M";
             this.color = GREEN;
         }
     }

@@ -14,12 +14,15 @@ import java.util.List;
 @ToString
 public final class HerbloreResult {
     private final ItemQuantities owned;
+    private final int currentXp;
     private final List<ChainResult> chainResults;
     private final double totalXp;
     private final SecondaryBalance secondaryBalance;
 
-    public HerbloreResult(ItemQuantities owned, List<ChainResult> chainResults, SecondaryBalance secondaryBalance) {
+    public HerbloreResult(ItemQuantities owned, int currentXp, List<ChainResult> chainResults,
+                          SecondaryBalance secondaryBalance) {
         this.owned = owned;
+        this.currentXp = currentXp;
         this.chainResults = List.copyOf(chainResults);
         this.totalXp = this.chainResults.stream().mapToDouble(ChainResult::getXp).sum();
         this.secondaryBalance = secondaryBalance;

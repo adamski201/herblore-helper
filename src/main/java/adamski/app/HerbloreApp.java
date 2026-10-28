@@ -112,6 +112,16 @@ public class HerbloreApp {
         publishResult(result);
     }
 
+    public void updateCurrentXp(int xp) {
+        if (!store.updateCurrentXp(xp)) return;
+
+        log.debug("herblore xp: {}", xp);
+        if (result == null) return;
+
+        result = recalculate();
+        publishResult(result);
+    }
+
     public void addResultListener(ResultListener listener) {
         resultListeners.add(listener);
     }
@@ -150,7 +160,7 @@ public class HerbloreApp {
                 settings.isChainProductsCounted(),
                 settings.isPrecursorsCounted() ? precursors : List.of());
 
-        return new HerbloreResult(ownedItems, chainResults, secondaryBalance);
+        return new HerbloreResult(ownedItems, store.currentXp(), chainResults, secondaryBalance);
     }
 
     private static Map<Integer, Double> getRecipeYieldOverrides(HerbloreSettings settings) {

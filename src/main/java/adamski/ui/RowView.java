@@ -26,6 +26,7 @@ class RowView {
      */
     double rootQuantity;
 
+
     double xp;
 
     int productItemId;
@@ -44,6 +45,7 @@ class RowView {
      * How much of the product is made, in 1-dose units.
      */
     double outputQuantity;
+
 
     List<ProductOption> productOptions;
 
